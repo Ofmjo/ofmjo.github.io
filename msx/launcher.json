@@ -1,9 +1,9 @@
 {
   "name": "My Media Launcher",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "type": "pages",
   "headline": "Моя Медиатека",
-  "background": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1920&auto=format&fit=crop",
+  "background": "https://ofmjo.github.io/img/bg.jpg",
   "restore": true,
   "cache": true,
   "pages": [
@@ -14,33 +14,44 @@
           "type": "default",
           "layout": "0,0,4,3",
           "color": "#2D1B4E",
-          "image": "https://msx.zona.ms/assets/logo_512_512.png",
+          "image": "https://ofmjo.github.io/img/zona.png",
           "imageFiller": "cover",
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
-          "badge": "TOP",
+          "_badge": "TOP",
           "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         },
         {
           "id": "app_hdrezka",
           "type": "default",
           "layout": "4,0,4,3",
-          "color": "#4A1515",
-          "image": "https://hdrezka.ag/templates/hdrezka/images/dwnapp_logo.png",
-          "imageFiller": "fit",
+          "color": "#2D1B4E",
+          "image": "https://ofmjo.github.io/img/hdrezka.jpg",
+          "imageFiller": "cover",
           "title": "HDRezka",
           "titleFooter": "Фильмы и сериалы",
-          "badge": "HD",
+          "_badge": "HD",
           "action": "menu:http://89.124.94.44:8080/msx/menu.json"
         },
         {
-          "id": "game_minesweeper",
+          "id": "app_update",
+          "type": "default",
+          "layout": "8,0,4,3",
+          "color": "#dfdee0",
+          "image": "https://ofmjo.github.io/img/update.png",
+          "imageFiller": "cover",
+          "title": "Перезагрузка",
+          "titleFooter": "Перезагрузить лаунчер",
+          "_badge": "NEW",
+          "action": "cleaning"
+        },
+        {
+          "id": "app_game",
           "type": "default",
           "layout": "0,3,4,3",
           "color": "#14304A",
           "title": "Сапёр",
           "titleFooter": "Игра для пульта",
-          "badge": "GAME",
           "action": "link:https://ofmjo.github.io/msx/game/index.html"
         }
       ]
