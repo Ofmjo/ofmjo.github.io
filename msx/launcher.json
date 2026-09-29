@@ -1,0 +1,203 @@
+{
+  "name": "MSX Launcher",
+  "version": "1.0.0",
+  "type": "pages",
+  "headline": "MSX Launcher",
+  "background": "https://msx.benzac.de/img/bg2.jpg",
+  "restore": true,
+  "cache": true,
+  "template": {
+    "type": "default",
+    "layout": "0,0,3,3",
+    "color": "msx-glass",
+    "iconSize": "extra-large",
+    "imageFiller": "fit"
+  },
+  "items": [
+    {
+      "id": "app_zona",
+      "image": "https://msx.zona.ms/assets/logo_512_512.png",
+      "imageFiller": "cover",
+      "color": "#19394f",
+      "title": "Zona",
+      "titleFooter": "Фильмы и сериалы",
+      "action": "start",
+      "data": {
+        "name": "Zona",
+        "version": "v1.0.6",
+        "parameter": "content:https://m.zona.ms/msx/start.json"
+      }
+    },
+    {
+      "id": "app_twitch",
+      "image": "https://launcher.msx.benzac.de/assets/ttv.png",
+      "color": "#8652f6",
+      "title": "Twitch",
+      "titleFooter": "Стримы",
+      "action": "start",
+      "data": {
+        "name": "Twitch MSX",
+        "version": "1.0.5",
+        "parameter": "menu:request:interaction:init@https://ttv.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_tmdb",
+      "image": "https://launcher.msx.benzac.de/assets/tmdb.png",
+      "color": "#00cb72",
+      "title": "The Movie DB",
+      "titleFooter": "База фильмов",
+      "action": "start",
+      "data": {
+        "name": "THE MOVIE DB MSX",
+        "version": "1.0.10",
+        "parameter": "menu:https://tmdb.msx.benzac.de/msx/service.php"
+      }
+    },
+    {
+      "id": "app_soundcloud",
+      "image": "https://launcher.msx.benzac.de/assets/sc.png",
+      "color": "#ff5500",
+      "title": "SoundCloud",
+      "titleFooter": "Музыка и подкасты",
+      "action": "start",
+      "data": {
+        "name": "SoundCloud MSX",
+        "version": "1.0.15",
+        "parameter": "menu:user:https://sc.msx.benzac.de/msx/service.php"
+      }
+    },
+    {
+      "id": "app_gdrive",
+      "image": "https://launcher.msx.benzac.de/assets/gd.png",
+      "color": "#1a73e8",
+      "title": "Google Drive",
+      "titleFooter": "Облачное хранилище",
+      "action": "start",
+      "data": {
+        "name": "Google Drive MSX",
+        "version": "1.0.36",
+        "parameter": "menu:request:interaction:init@https://gd.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_onedrive",
+      "image": "https://launcher.msx.benzac.de/assets/od.png",
+      "color": "#094ab1",
+      "title": "OneDrive",
+      "titleFooter": "Облачное хранилище",
+      "action": "start",
+      "data": {
+        "name": "OneDrive MSX",
+        "version": "1.0.16",
+        "parameter": "menu:request:interaction:init@https://od.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_dropbox",
+      "image": "https://launcher.msx.benzac.de/assets/db.png",
+      "color": "#0061fe",
+      "title": "Dropbox",
+      "titleFooter": "Облачное хранилище",
+      "action": "start",
+      "data": {
+        "name": "Dropbox MSX",
+        "version": "1.0.9",
+        "parameter": "menu:request:interaction:init@https://db.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_nodebrowser",
+      "image": "https://launcher.msx.benzac.de/assets/nb.png",
+      "color": "#417e38",
+      "title": "Node Browser",
+      "titleFooter": "Локальный сервер",
+      "action": "start",
+      "data": {
+        "name": "Node Browser MSX",
+        "version": "1.0.10",
+        "parameter": "menu:request:interaction:init@https://nb.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_launcher",
+      "break": "page",
+      "icon": "msx-white:rocket-launch",
+      "color": "#8c45f7",
+      "title": "Launcher MSX",
+      "titleFooter": "Каталог приложений",
+      "action": "start",
+      "data": {
+        "name": "Launcher MSX",
+        "version": "1.0.23",
+        "parameter": "menu:request:interaction:init@https://launcher.msx.benzac.de/interaction"
+      }
+    },
+    {
+      "id": "app_picsum",
+      "image": "https://launcher.msx.benzac.de/assets/lp.png",
+      "color": "msx-black-soft",
+      "title": "Lorem Picsum",
+      "titleFooter": "Изображения",
+      "action": "start",
+      "data": {
+        "name": "Lorem Picsum MSX",
+        "version": "1.0.3",
+        "parameter": "menu:user:https://lp.msx.benzac.de/msx/service.php"
+      }
+    },
+    {
+      "id": "app_rbtv",
+      "image": "https://launcher.msx.benzac.de/assets/rbtv.png",
+      "color": "#202020",
+      "title": "RBTV",
+      "titleFooter": "Rocket Beans TV",
+      "action": "start",
+      "data": {
+        "name": "RBTV MSX",
+        "version": "1.0.29",
+        "parameter": "menu:request:interaction:init@https://rbtv.msx.benzac.de/index.html"
+      }
+    },
+    {
+      "id": "msx_settings",
+      "icon": "msx-white:settings",
+      "color": "#455a64",
+      "title": "Настройки MSX",
+      "titleFooter": "Параметры приложения",
+      "action": "settings:start"
+    },
+    {
+      "id": "msx_reload",
+      "icon": "msx-white:autorenew",
+      "color": "#00695c",
+      "title": "Обновить",
+      "titleFooter": "Перезапуск лаунчера",
+      "action": "reload"
+    },
+    {
+      "id": "msx_catalog",
+      "icon": "msx-white:web-asset",
+      "color": "#5e35b1",
+      "title": "Каталог MSX",
+      "titleFooter": "Все сервисы и демо",
+      "action": "link:https://msx.benzac.de/info/?tab=Showcases"
+    },
+    {
+      "id": "msx_about",
+      "icon": "msx-white:info",
+      "color": "#37474f",
+      "title": "О лаунчере",
+      "titleFooter": "MSX Launcher v1.0.0",
+      "action": "info:MSX Launcher v1.0.0. Приложения запускаются действием start, которое переключает стартовый параметр. Добавить своё приложение можно в файле msx/launcher.json."
+    },
+    {
+      "id": "msx_add",
+      "icon": "msx-white:add",
+      "color": "#455a64",
+      "title": "Своё приложение",
+      "titleFooter": "Как добавить",
+      "action": "info:Добавление приложения. Откройте msx/launcher.json, скопируйте любой элемент массива items и укажите title, titleFooter, image или icon, color, а также action start с data из полей name, version и parameter. Пример parameter: menu:https://site.example/msx/menu.json или redirect:https://site.example/msx/start.json."
+    }
+  ]
+}
