@@ -1,8 +1,8 @@
 {
-  "name": "Домашний экран",
-  "version": "1.2.3",
+  "name": "My Media Launcher",
+  "version": "1.2.4",
   "type": "pages",
-  "headline": "Домашний экран",
+  "headline": "Моя Медиатека",
   "background": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1920&auto=format&fit=crop",
   "restore": true,
   "cache": true,
@@ -20,7 +20,7 @@
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
           "badge": "TOP",
-          "action": "action:https://msx.zona.ms"
+          "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         },
         {
           "id": "app_hdrezka",
@@ -33,7 +33,7 @@
           "title": "HDRezka",
           "titleFooter": "Фильмы и сериалы",
           "badge": "HD",
-          "action": "action:http://89.124.94.44:8080/msx/start.json"
+          "action": "link:http://89.124.94.44:8080/msx/start.json"
         }
       ]
     }
