@@ -3,7 +3,7 @@
   "version": "1.2.4",
   "type": "pages",
   "headline": "Моя Медиатека",
-  "background": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1920&auto=format&fit=crop",
+  "background": "https://ofmjo.github.io/img/bg.jpg",
   "restore": true,
   "cache": true,
   "pages": [
