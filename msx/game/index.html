@@ -97,6 +97,11 @@
     box-shadow:0 0 0 2px rgba(76,141,255,.35),0 30px 60px -28px rgba(76,141,255,.9);
   }
   .card.sel .card-hint{color:rgba(255,255,255,.85);}
+  .grid.dense .card{min-height:8rem;padding:1.1rem 1.2rem;border-radius:1.1rem;}
+  .grid.dense .card h2{font-size:1.45rem;}
+  .grid.dense .card p{display:none;}
+  .grid.dense .card-hint{margin-top:.7rem;font-size:.78rem;}
+  .grid.dense .num{font-size:.95rem;}
   .empty{color:var(--muted);text-align:center;font-size:1rem;}
   .hint-bar{
     display:flex;
@@ -145,6 +150,41 @@
       tag: 'Логика',
       color: '#14304A',
       url: 'bombgame/index.html'
+    },
+    {
+      title: '2048',
+      sub: 'Складывайте плитки до 2048',
+      tag: 'Головоломка',
+      color: '#3A2C12',
+      url: '2048/index.html'
+    },
+    {
+      title: 'Змейка',
+      sub: 'Собирайте еду и растите',
+      tag: 'Аркада',
+      color: '#123A2A',
+      url: 'snake/index.html'
+    },
+    {
+      title: 'Flappy',
+      sub: 'Пролетайте между трубами',
+      tag: 'Аркада',
+      color: '#0E3540',
+      url: 'flappy/index.html'
+    },
+    {
+      title: 'Рыба-пожиратель',
+      sub: 'Ешь мелких, расти и не попадись крупным',
+      tag: 'Ио',
+      color: '#0A2A3A',
+      url: 'fish/index.html'
+    },
+    {
+      title: 'Территория',
+      sub: 'Замыкай контур и забирай площадь',
+      tag: 'Ио',
+      color: '#1A2140',
+      url: 'territory/index.html'
     }
   ];
 
@@ -213,6 +253,7 @@
     }
     cols = Math.min(GAMES.length, 3);
     grid.style.setProperty('--cols', cols);
+    grid.classList.toggle('dense', GAMES.length > 4);
     for (var i = 0; i < GAMES.length; i++) {
       var card = buildCard(GAMES[i], i);
       grid.appendChild(card);

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Змейка — MSX</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#070a0f;
+    --line:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.94);
+    --muted:rgba(255,255,255,.5);
+    --accent:#4c8dff;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:clamp(15px,1.05vw,24px);}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(60% 55% at 50% 0%,rgba(76,141,255,.16),transparent 70%),
+      radial-gradient(50% 45% at 85% 100%,rgba(52,211,153,.1),transparent 70%);
+  }
+  #app{position:relative;height:100%;}
+  .screen{
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+    padding:2.2rem 2.6rem;
+  }
+  .screen.active{display:flex;}
+  .brand{text-align:center;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);}
+  .menu-head{margin-top:4vh;text-align:center;}
+  .menu-head h1{margin:.3rem 0 0;font-size:3.4rem;font-weight:650;letter-spacing:-.02em;}
+  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
+  .menu-list{
+    display:flex;
+    flex-direction:column;
+    gap:.7rem;
+    width:min(36rem,100%);
+    margin:2.4rem auto 0;
+  }
+  .menu-item{
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    padding:1rem 1.4rem;
+    border-radius:1rem;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.03);
+    font-size:1.05rem;
+    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
+  }
+  .menu-item .name{font-weight:550;}
+  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums;}
+  .menu-item.sel{
+    background:rgba(76,141,255,.16);
+    border-color:rgba(76,141,255,.65);
+    transform:scale(1.03);
+    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
+  }
+  .hud{display:flex;gap:1.4rem;justify-content:center;}
+  .hud-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:8.5rem;
+    padding:.5rem 1.2rem;
+    border:1px solid var(--line);
+    border-radius:.9rem;
+    background:rgba(255,255,255,.03);
+  }
+  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
+  .board-wrap{
+    flex:1;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:1.4rem 0;
+  }
+  .board{
+    --cols:18;
+    --rows:11;
+    --cell:60px;
+    --gap:2px;
+    display:grid;
+    grid-template-columns:repeat(var(--cols),var(--cell));
+    grid-template-rows:repeat(var(--rows),var(--cell));
+    gap:var(--gap);
+  }
+  .cell{
+    width:var(--cell);
+    height:var(--cell);
+    border-radius:calc(var(--cell) * .18);
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.03);
+  }
+  .cell.snake{background:#3f7fe0;border-color:rgba(255,255,255,.06);}
+  .cell.head{background:#8ab6ff;box-shadow:0 0 24px rgba(76,141,255,.85);}
+  .cell.food{background:#ff5c5c;border-radius:50%;box-shadow:0 0 24px rgba(255,80,80,.75);}
+  .hint-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.5rem 1.6rem;
+    justify-content:center;
+    color:var(--muted);
+    font-size:.85rem;
+  }
+  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
+  .kbd{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.05);
+    border-radius:.45rem;
+    padding:.1rem .5rem;
+    color:rgba(255,255,255,.85);
+    font-size:.8rem;
+  }
+  .overlay{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(4,7,11,.75);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .panel{
+    width:min(34rem,86vw);
+    padding:2rem;
+    border-radius:1.4rem;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
+  }
+  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
+  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
+  .panel .menu-list{margin:0;width:100%;}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="screen-menu" class="screen active">
+    <div class="brand">MSX Games</div>
+    <div class="menu-head">
+      <h1>Змейка</h1>
+      <p class="sub">Выберите скорость</p>
+    </div>
+    <nav id="menuList" class="menu-list"></nav>
+    <div style="flex:1"></div>
+    <div class="hint-bar">
+      <span><b class="kbd">▲ ▼</b> выбор</span>
+      <span><b class="kbd">OK</b> играть</span>
+      <span><b class="kbd">BACK</b> выход</span>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
+      <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
+      <div class="hud-item"><span class="hud-label">Скорость</span><b id="hudSpeed">—</b></div>
+    </div>
+    <div id="boardWrap" class="board-wrap"><div id="board" class="board"></div></div>
+    <div class="hint-bar">
+      <span><b class="kbd">◀ ▲ ▼ ▶</b> движение</span>
+      <span><b class="kbd">OK</b> пауза</span>
+      <span><b class="kbd">BACK</b> пауза</span>
+    </div>
+  </section>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="panel">
+    <h2 id="ovTitle"></h2>
+    <p id="ovText" class="ov-text"></p>
+    <nav id="ovList" class="menu-list"></nav>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LEVELS = [
+    { name: 'Медленно', speed: 175 },
+    { name: 'Нормально', speed: 118 },
+    { name: 'Быстро', speed: 78 }
+  ];
+  var COLS = 18;
+  var ROWS = 11;
+  var OK_CODES = [13, 32];
+  var BACK_CODES = [8, 27, 166, 461, 10009];
+
+  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
+  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
+
+  var screenMenu = document.getElementById('screen-menu');
+  var screenGame = document.getElementById('screen-game');
+  var menuList = document.getElementById('menuList');
+  var board = document.getElementById('board');
+  var boardWrap = document.getElementById('boardWrap');
+  var hudScore = document.getElementById('hudScore');
+  var hudBest = document.getElementById('hudBest');
+  var hudSpeed = document.getElementById('hudSpeed');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var ovList = document.getElementById('ovList');
+
+  var cells = [];
+  var snake = [];
+  var screen = 'menu';
+  var food = null;
+  var dir = { r: 0, c: 1 };
+  var nextDir = { r: 0, c: 1 };
+  var score = 0;
+  var best = 0;
+  var levelIndex = 1;
+  var menuIndex = 1;
+  var MENU_LEN = LEVELS.length + 1;
+  var timer = null;
+  var running = false;
+  var finished = false;
+  var overlayOpen = false;
+  var ovItems = [];
+  var ovIndex = 0;
+  var resultType = null;
+  var resultReason = '';
+
+  try { best = parseInt(localStorage.getItem('msxsnakebest'), 10) || 0; } catch (err) { best = 0; }
+
+  function buildMenu() {
+    menuList.innerHTML = '';
+    for (var i = 0; i < LEVELS.length; i++) {
+      menuList.appendChild(buildMenuItem(LEVELS[i].name, LEVELS[i].speed + ' мс'));
+    }
+    menuList.appendChild(buildMenuItem('Выход', null));
+    selectMenu(menuIndex);
+  }
+
+  function buildMenuItem(label, meta) {
+    var item = document.createElement('div');
+    item.className = 'menu-item';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+    item.appendChild(name);
+    if (meta) {
+      var m = document.createElement('span');
+      m.className = 'meta';
+      m.textContent = meta;
+      item.appendChild(m);
+    }
+    return item;
+  }
+
+  function activateMenu() {
+    if (menuIndex < LEVELS.length) {
+      startLevel(menuIndex);
+    } else {
+      exitApp();
+    }
+  }
+
+  function exitApp() {
+    if (history.length > 1) {
+      history.back();
+      return;
+    }
+    location.href = '../index.html';
+  }
+
+  function selectMenu(i) {
+    for (var k = 0; k < menuList.children.length; k++) {
+      menuList.children[k].classList.toggle('sel', k === i);
+    }
+  }
+
+  function setScreen(name) {
+    screen = name;
+    screenMenu.classList.toggle('active', name === 'menu');
+    screenGame.classList.toggle('active', name === 'game');
+  }
+
+  function buildBoard() {
+    board.innerHTML = '';
+    cells = [];
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < COLS * ROWS; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      frag.appendChild(cell);
+      cells.push(cell);
+    }
+    board.appendChild(frag);
+  }
+
+  function layout() {
+    var rect = boardWrap.getBoundingClientRect();
+    var pad = parseFloat(getComputedStyle(boardWrap).paddingTop) || 0;
+    var gap = 2;
+    var availW = rect.width - 8;
+    var availH = rect.height - pad * 2 - 8;
+    var cw = (availW - gap * (COLS - 1)) / COLS;
+    var ch = (availH - gap * (ROWS - 1)) / ROWS;
+    var size = Math.floor(Math.min(cw, ch));
+    if (size < 16) { size = 16; }
+    board.style.setProperty('--cols', COLS);
+    board.style.setProperty('--rows', ROWS);
+    board.style.setProperty('--gap', gap + 'px');
+    board.style.setProperty('--cell', size + 'px');
+  }
+
+  function idx(r, c) { return r * COLS + c; }
+
+  function paint() {
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i].className !== 'cell') { cells[i].className = 'cell'; }
+    }
+    if (food) {
+      cells[idx(food.r, food.c)].className = 'cell food';
+    }
+    for (var s = snake.length - 1; s >= 0; s--) {
+      var seg = snake[s];
+      cells[idx(seg.r, seg.c)].className = s === 0 ? 'cell snake head' : 'cell snake';
+    }
+  }
+
+  function spawnFood() {
+    var free = [];
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var taken = false;
+        for (var s = 0; s < snake.length; s++) {
+          if (snake[s].r === r && snake[s].c === c) { taken = true; break; }
+        }
+        if (!taken) { free.push({ r: r, c: c }); }
+      }
+    }
+    if (!free.length) { food = null; return; }
+    food = free[Math.floor(Math.random() * free.length)];
+  }
+
+  function updateHud() {
+    hudScore.textContent = score;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('msxsnakebest', String(best)); } catch (err) {}
+    }
+    hudBest.textContent = best;
+    hudSpeed.textContent = LEVELS[levelIndex].name;
+  }
+
+  function stopLoop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    running = false;
+  }
+
+  function startLoop() {
+    stopLoop();
+    if (finished) { return; }
+    running = true;
+    timer = setInterval(tick, LEVELS[levelIndex].speed);
+  }
+
+  function startLevel(li) {
+    levelIndex = li;
+    stopLoop();
+    closeOverlay();
+    setScreen('game');
+    buildBoard();
+    layout();
+    var midR = Math.floor(ROWS / 2);
+    var midC = Math.floor(COLS / 2);
+    snake = [
+      { r: midR, c: midC },
+      { r: midR, c: midC - 1 },
+      { r: midR, c: midC - 2 }
+    ];
+    dir = { r: 0, c: 1 };
+    nextDir = { r: 0, c: 1 };
+    score = 0;
+    finished = false;
+    resultType = null;
+    resultReason = '';
+    spawnFood();
+    updateHud();
+    paint();
+    startLoop();
+  }
+
+  function tick() {
+    dir = nextDir;
+    var head = { r: snake[0].r + dir.r, c: snake[0].c + dir.c };
+
+    if (head.r < 0 || head.c < 0 || head.r >= ROWS || head.c >= COLS) {
+      gameOver('Вы врезались в стену.');
+      return;
+    }
+
+    var grows = food && head.r === food.r && head.c === food.c;
+    var limit = snake.length - (grows ? 0 : 1);
+    for (var i = 0; i < limit; i++) {
+      if (snake[i].r === head.r && snake[i].c === head.c) {
+        gameOver('Вы врезались в себя.');
+        return;
+      }
+    }
+
+    snake.unshift(head);
+    if (grows) {
+      score += 10;
+      spawnFood();
+      updateHud();
+      if (snake.length >= COLS * ROWS) {
+        win();
+        return;
+      }
+    } else {
+      snake.pop();
+    }
+    paint();
+  }
+
+  function gameOver(reason) {
+    stopLoop();
+    finished = true;
+    resultType = 'lose';
+    resultReason = reason || '';
+    paint();
+    showOverlay('lose', reason);
+  }
+
+  function win() {
+    stopLoop();
+    finished = true;
+    resultType = 'win';
+    resultReason = '';
+    paint();
+    showOverlay('win');
+  }
+
+  function buildItem(label) {
+    var item = document.createElement('div');
+    item.className = 'menu-item';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+    item.appendChild(name);
+    return item;
+  }
+
+  function buildOverlayList(items) {
+    ovList.innerHTML = '';
+    for (var i = 0; i < items.length; i++) {
+      ovList.appendChild(buildItem(items[i].label));
+    }
+    selectOverlay(ovIndex);
+  }
+
+  function selectOverlay(i) {
+    for (var k = 0; k < ovList.children.length; k++) {
+      ovList.children[k].classList.toggle('sel', k === i);
+    }
+  }
+
+  function showOverlay(type, reason) {
+    var title = 'Пауза';
+    var text = 'Игра приостановлена.';
+    var items = [
+      { label: 'Продолжить', run: resume },
+      { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+      { label: 'Скорости', run: goMenu },
+      { label: 'Выход', run: exitApp }
+    ];
+    if (type === 'lose') {
+      title = 'Игра окончена';
+      text = (reason || '') + ' Счёт: ' + score + '.';
+      items = [
+        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+        { label: 'Скорости', run: goMenu },
+        { label: 'Выход', run: exitApp }
+      ];
+    } else if (type === 'win') {
+      title = 'Победа';
+      text = 'Поле заполнено! Счёт: ' + score + '.';
+      items = [
+        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+        { label: 'Скорости', run: goMenu },
+        { label: 'Выход', run: exitApp }
+      ];
+    }
+    overlayOpen = true;
+    ovIndex = 0;
+    ovItems = items;
+    ovTitle.textContent = title;
+    ovText.textContent = text;
+    buildOverlayList(items);
+    overlay.classList.add('show');
+  }
+
+  function closeOverlay() {
+    overlayOpen = false;
+    overlay.classList.remove('show');
+  }
+
+  function resume() {
+    closeOverlay();
+    if (!finished) { startLoop(); }
+  }
+
+  function goMenu() {
+    stopLoop();
+    closeOverlay();
+    setScreen('menu');
+    menuIndex = levelIndex;
+    selectMenu(menuIndex);
+  }
+
+  function moveOverlay(d) {
+    var n = ovItems.length;
+    if (!n) { return; }
+    ovIndex = (ovIndex + d + n) % n;
+    selectOverlay(ovIndex);
+  }
+
+  function activateOverlay() {
+    var item = ovItems[ovIndex];
+    if (item) { item.run(); }
+  }
+
+  function turn(dr, dc) {
+    if (dr === -dir.r && dc === -dir.c) { return; }
+    nextDir = { r: dr, c: dc };
+  }
+
+  function onKeyDown(e) {
+    var k = e.keyCode || e.which;
+    if ((k >= 37 && k <= 40) || isOk(k) || isBack(k)) { e.preventDefault(); }
+    if (e.repeat && isOk(k)) { return; }
+
+    if (overlayOpen) {
+      if (k === 38) { moveOverlay(-1); }
+      else if (k === 40) { moveOverlay(1); }
+      else if (isOk(k)) { activateOverlay(); }
+      else if (isBack(k)) { resume(); }
+      return;
+    }
+
+    if (screen === 'menu') {
+      if (k === 38) { menuIndex = (menuIndex + MENU_LEN - 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (k === 40) { menuIndex = (menuIndex + 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (isOk(k)) { activateMenu(); }
+      else if (isBack(k)) { exitApp(); }
+      return;
+    }
+
+    if (k === 37) { turn(0, -1); }
+    else if (k === 39) { turn(0, 1); }
+    else if (k === 38) { turn(-1, 0); }
+    else if (k === 40) { turn(1, 0); }
+    else if (isOk(k) || isBack(k)) {
+      if (finished) { showOverlay(resultType || 'lose', resultReason); return; }
+      stopLoop();
+      showOverlay('pause');
+    }
+  }
+
+  document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', layout);
+  window.addEventListener('blur', stopLoop);
+
+  buildMenu();
+  updateHud();
+})();
+</script>
+</body>
+</html>

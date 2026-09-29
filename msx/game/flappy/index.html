@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flappy — MSX</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#070a0f;
+    --line:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.94);
+    --muted:rgba(255,255,255,.5);
+    --accent:#4c8dff;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:clamp(15px,1.05vw,24px);}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(60% 55% at 50% 0%,rgba(34,211,238,.14),transparent 70%),
+      radial-gradient(50% 45% at 85% 100%,rgba(76,141,255,.1),transparent 70%);
+  }
+  #app{position:relative;height:100%;}
+  .screen{
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+    padding:2.2rem 2.6rem;
+  }
+  .screen.active{display:flex;}
+  .brand{text-align:center;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);}
+  .menu-head{margin-top:4vh;text-align:center;}
+  .menu-head h1{margin:.3rem 0 0;font-size:3.4rem;font-weight:650;letter-spacing:-.02em;}
+  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
+  .menu-list{
+    display:flex;
+    flex-direction:column;
+    gap:.7rem;
+    width:min(36rem,100%);
+    margin:2.4rem auto 0;
+  }
+  .menu-item{
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    padding:1rem 1.4rem;
+    border-radius:1rem;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.03);
+    font-size:1.05rem;
+    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
+  }
+  .menu-item .name{font-weight:550;}
+  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;}
+  .menu-item.sel{
+    background:rgba(76,141,255,.16);
+    border-color:rgba(76,141,255,.65);
+    transform:scale(1.03);
+    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
+  }
+  .hud{display:flex;gap:1.4rem;justify-content:center;}
+  .hud-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:8.5rem;
+    padding:.5rem 1.2rem;
+    border:1px solid var(--line);
+    border-radius:.9rem;
+    background:rgba(255,255,255,.03);
+  }
+  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
+  .board-wrap{
+    flex:1;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:1.2rem 0;
+  }
+  .board-wrap canvas{
+    display:block;
+    width:100%;
+    height:100%;
+    border-radius:1rem;
+    border:1px solid var(--line);
+    background:#0b1620;
+  }
+  .hint-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.5rem 1.6rem;
+    justify-content:center;
+    color:var(--muted);
+    font-size:.85rem;
+  }
+  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
+  .kbd{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.05);
+    border-radius:.45rem;
+    padding:.1rem .5rem;
+    color:rgba(255,255,255,.85);
+    font-size:.8rem;
+  }
+  .overlay{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(4,7,11,.75);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .panel{
+    width:min(34rem,86vw);
+    padding:2rem;
+    border-radius:1.4rem;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
+  }
+  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
+  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
+  .panel .menu-list{margin:0;width:100%;}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="screen-menu" class="screen active">
+    <div class="brand">MSX Games</div>
+    <div class="menu-head">
+      <h1>Flappy</h1>
+      <p class="sub">Выберите сложность</p>
+    </div>
+    <nav id="menuList" class="menu-list"></nav>
+    <div style="flex:1"></div>
+    <div class="hint-bar">
+      <span><b class="kbd">▲ ▼</b> выбор</span>
+      <span><b class="kbd">OK</b> играть</span>
+      <span><b class="kbd">BACK</b> выход</span>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
+      <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
+      <div class="hud-item"><span class="hud-label">Сложность</span><b id="hudLevel">—</b></div>
+    </div>
+    <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
+    <div class="hint-bar">
+      <span><b class="kbd">OK</b> взмах</span>
+      <span><b class="kbd">BACK</b> пауза</span>
+    </div>
+  </section>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="panel">
+    <h2 id="ovTitle"></h2>
+    <p id="ovText" class="ov-text"></p>
+    <nav id="ovList" class="menu-list"></nav>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LEVELS = [
+    { name: 'Широкие', gap: 225, speed: 175, spawn: 1.6 },
+    { name: 'Обычно', gap: 188, speed: 220, spawn: 1.42 },
+    { name: 'Узко', gap: 156, speed: 268, spawn: 1.3 }
+  ];
+  var OK_CODES = [13, 32];
+  var BACK_CODES = [8, 27, 166, 461, 10009];
+
+  var WORLD_H = 500;
+  var GROUND_H = 56;
+  var BIRD_R = 16;
+  var PIPE_W = 74;
+  var GRAVITY = 1520;
+  var FLAP = -430;
+  var MAX_FALL = 720;
+
+  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
+  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
+
+  var screenMenu = document.getElementById('screen-menu');
+  var screenGame = document.getElementById('screen-game');
+  var menuList = document.getElementById('menuList');
+  var boardWrap = document.getElementById('boardWrap');
+  var canvas = document.getElementById('scene');
+  var ctx = canvas.getContext('2d');
+  var hudScore = document.getElementById('hudScore');
+  var hudBest = document.getElementById('hudBest');
+  var hudLevel = document.getElementById('hudLevel');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var ovList = document.getElementById('ovList');
+
+  var screen = 'menu';
+  var state = 'menu';
+  var levelIndex = 1;
+  var menuIndex = 1;
+  var MENU_LEN = LEVELS.length + 1;
+
+  var k = 1;
+  var worldW = 800;
+  var sky = null;
+  var bird = { x: 190, y: WORLD_H / 2, vy: 0, rot: 0 };
+  var pipes = [];
+  var spawnTimer = 0;
+  var score = 0;
+  var best = 0;
+  var bobTime = 0;
+  var distance = 0;
+  var resultReason = '';
+
+  var rafId = null;
+  var lastTime = 0;
+  var overlayOpen = false;
+  var ovItems = [];
+  var ovIndex = 0;
+
+  try { best = parseInt(localStorage.getItem('msxflappybest'), 10) || 0; } catch (err) { best = 0; }
+
+  function nowMs() {
+    return (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+  }
+
+  function buildMenuItem(label, meta) {
+    var item = document.createElement('div');
+    item.className = 'menu-item';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+    item.appendChild(name);
+    if (meta) {
+      var m = document.createElement('span');
+      m.className = 'meta';
+      m.textContent = meta;
+      item.appendChild(m);
+    }
+    return item;
+  }
+
+  function buildMenu() {
+    menuList.innerHTML = '';
+    for (var i = 0; i < LEVELS.length; i++) {
+      menuList.appendChild(buildMenuItem(LEVELS[i].name, 'зазор ' + LEVELS[i].gap));
+    }
+    menuList.appendChild(buildMenuItem('Выход', null));
+    selectMenu(menuIndex);
+  }
+
+  function selectMenu(i) {
+    for (var n = 0; n < menuList.children.length; n++) {
+      menuList.children[n].classList.toggle('sel', n === i);
+    }
+  }
+
+  function setScreen(name) {
+    screen = name;
+    screenMenu.classList.toggle('active', name === 'menu');
+    screenGame.classList.toggle('active', name === 'game');
+  }
+
+  function updateHud() {
+    hudScore.textContent = score;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('msxflappybest', String(best)); } catch (err) {}
+    }
+    hudBest.textContent = best;
+    hudLevel.textContent = LEVELS[levelIndex].name;
+  }
+
+  function resize() {
+    var rect = boardWrap.getBoundingClientRect();
+    var w = Math.max(1, Math.round(rect.width));
+    var h = Math.max(1, Math.round(rect.height));
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    k = canvas.height / WORLD_H;
+    worldW = canvas.width / k;
+    bird.x = worldW * 0.24;
+    sky = null;
+  }
+
+  function cfg() { return LEVELS[levelIndex]; }
+
+  function startLevel(li) {
+    levelIndex = li;
+    stopLoop();
+    closeOverlay();
+    setScreen('game');
+    resize();
+    pipes = [];
+    score = 0;
+    distance = 0;
+    spawnTimer = 0.9;
+    bird.y = WORLD_H / 2;
+    bird.vy = 0;
+    bird.rot = 0;
+    bobTime = 0;
+    state = 'ready';
+    updateHud();
+    draw();
+    startLoop();
+  }
+
+  function spawnPipe() {
+    var c = cfg();
+    var minY = c.gap / 2 + 40;
+    var maxY = WORLD_H - GROUND_H - c.gap / 2 - 40;
+    var gapY = minY + Math.random() * Math.max(20, maxY - minY);
+    pipes.push({ x: worldW + PIPE_W, gapY: gapY, scored: false });
+  }
+
+  function hitRect(cx, cy, r, rx, ry, rw, rh) {
+    var nx = Math.max(rx, Math.min(cx, rx + rw));
+    var ny = Math.max(ry, Math.min(cy, ry + rh));
+    var dx = cx - nx;
+    var dy = cy - ny;
+    return dx * dx + dy * dy < r * r;
+  }
+
+  function update(dt) {
+    if (state === 'ready') {
+      bobTime += dt;
+      bird.y = WORLD_H / 2 + Math.sin(bobTime * 4) * 12;
+      return;
+    }
+    if (state !== 'playing') { return; }
+
+    var c = cfg();
+    distance += c.speed * dt;
+
+    bird.vy += GRAVITY * dt;
+    if (bird.vy > MAX_FALL) { bird.vy = MAX_FALL; }
+    bird.y += bird.vy * dt;
+    bird.rot = Math.max(-0.45, Math.min(1.1, bird.vy / 620));
+
+    if (bird.y - BIRD_R < 0) {
+      bird.y = BIRD_R;
+      bird.vy = 0;
+    }
+    if (bird.y + BIRD_R > WORLD_H - GROUND_H) {
+      die('Вы упали на землю.');
+      return;
+    }
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnPipe();
+      spawnTimer = c.spawn;
+    }
+
+    for (var i = pipes.length - 1; i >= 0; i--) {
+      var p = pipes[i];
+      p.x -= c.speed * dt;
+      if (!p.scored && p.x + PIPE_W < bird.x) {
+        p.scored = true;
+        score++;
+        updateHud();
+      }
+      var topH = p.gapY - c.gap / 2;
+      var botY = p.gapY + c.gap / 2;
+      if (hitRect(bird.x, bird.y, BIRD_R, p.x, 0, PIPE_W, topH) ||
+          hitRect(bird.x, bird.y, BIRD_R, p.x, botY, PIPE_W, WORLD_H - GROUND_H - botY)) {
+        die('Вы задели трубу.');
+        return;
+      }
+      if (p.x + PIPE_W < -20) { pipes.splice(i, 1); }
+    }
+  }
+
+  function drawCloud(cx, cy, r, alpha) {
+    ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.9, cy + r * 0.2, r * 0.75, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.9, cy + r * 0.25, r * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawPipes() {
+    var c = cfg();
+    var topH, botY, i, p, capH = 26;
+    for (i = 0; i < pipes.length; i++) {
+      p = pipes[i];
+      topH = p.gapY - c.gap / 2;
+      botY = p.gapY + c.gap / 2;
+
+      ctx.fillStyle = '#2f9e5e';
+      ctx.fillRect(p.x, 0, PIPE_W, topH - capH);
+      ctx.fillRect(p.x, botY + capH, PIPE_W, WORLD_H - GROUND_H - botY - capH);
+      ctx.fillStyle = '#3fc073';
+      ctx.fillRect(p.x - 6, topH - capH, PIPE_W + 12, capH);
+      ctx.fillRect(p.x - 6, botY, PIPE_W + 12, capH);
+      ctx.fillStyle = 'rgba(255,255,255,.14)';
+      ctx.fillRect(p.x + 8, 0, 9, topH - capH);
+      ctx.fillRect(p.x + 8, botY + capH, 9, WORLD_H - GROUND_H - botY - capH);
+    }
+  }
+
+  function drawBird() {
+    ctx.save();
+    ctx.translate(bird.x, bird.y);
+    ctx.rotate(bird.rot);
+    ctx.fillStyle = '#ffd248';
+    ctx.beginPath();
+    ctx.arc(0, 0, BIRD_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f0a92a';
+    ctx.beginPath();
+    ctx.ellipse(-3, 4, 10, 7, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(6, -6, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#101820';
+    ctx.beginPath();
+    ctx.arc(8, -6, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff8a3d';
+    ctx.beginPath();
+    ctx.moveTo(BIRD_R - 2, -1);
+    ctx.lineTo(BIRD_R + 12, 4);
+    ctx.lineTo(BIRD_R - 2, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!sky) {
+      sky = ctx.createLinearGradient(0, 0, 0, WORLD_H);
+      sky.addColorStop(0, '#0d3b57');
+      sky.addColorStop(0.55, '#136a86');
+      sky.addColorStop(1, '#1d8fa0');
+    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, worldW, WORLD_H);
+
+    var shift = (distance * 0.25) % (worldW + 300);
+    drawCloud(140 - shift, 90, 26, 0.1);
+    drawCloud(420 - shift, 150, 34, 0.08);
+    drawCloud(760 - shift, 70, 22, 0.12);
+    drawCloud(1040 - shift, 130, 30, 0.09);
+
+    drawPipes();
+
+    ctx.fillStyle = '#123024';
+    ctx.fillRect(0, WORLD_H - GROUND_H, worldW, GROUND_H);
+    ctx.fillStyle = '#1d5138';
+    ctx.fillRect(0, WORLD_H - GROUND_H, worldW, 8);
+    var stripe = (distance % 60);
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    for (var sx = -stripe; sx < worldW; sx += 60) {
+      ctx.fillRect(sx, WORLD_H - GROUND_H + 14, 30, 10);
+    }
+
+    drawBird();
+
+    if (state === 'ready') {
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.font = '28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Нажмите OK для взмаха', worldW / 2, WORLD_H / 2 - 90);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function frame(ts) {
+    if (state !== 'ready' && state !== 'playing') { return; }
+    var now = (typeof ts === 'number') ? ts : nowMs();
+    var dt = (now - lastTime) / 1000;
+    if (!isFinite(dt) || dt < 0) { dt = 0; }
+    if (dt > 0.05) { dt = 0.05; }
+    lastTime = now;
+    update(dt);
+    draw();
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function startLoop() {
+    stopLoop();
+    lastTime = nowMs();
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function stopLoop() {
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  function flap() {
+    if (state === 'ready') {
+      state = 'playing';
+      bird.vy = FLAP;
+      return;
+    }
+    if (state === 'playing') { bird.vy = FLAP; }
+  }
+
+  function die(reason) {
+    stopLoop();
+    state = 'dead';
+    resultReason = reason || '';
+    draw();
+    showOverlay('lose', reason);
+  }
+
+  function buildOverlayList(items) {
+    ovList.innerHTML = '';
+    for (var i = 0; i < items.length; i++) {
+      ovList.appendChild(buildMenuItem(items[i].label, null));
+    }
+    selectOverlay(ovIndex);
+  }
+
+  function selectOverlay(i) {
+    for (var n = 0; n < ovList.children.length; n++) {
+      ovList.children[n].classList.toggle('sel', n === i);
+    }
+  }
+
+  function showOverlay(type, reason) {
+    var title = 'Пауза';
+    var text = 'Игра приостановлена.';
+    var items = [
+      { label: 'Продолжить', run: resume },
+      { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+      { label: 'Сложности', run: goMenu },
+      { label: 'Выход', run: exitApp }
+    ];
+    if (type === 'lose') {
+      title = 'Игра окончена';
+      text = (reason || '') + ' Счёт: ' + score + '.';
+      items = [
+        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+        { label: 'Сложности', run: goMenu },
+        { label: 'Выход', run: exitApp }
+      ];
+    }
+    overlayOpen = true;
+    ovIndex = 0;
+    ovItems = items;
+    ovTitle.textContent = title;
+    ovText.textContent = text;
+    buildOverlayList(items);
+    overlay.classList.add('show');
+  }
+
+  function closeOverlay() {
+    overlayOpen = false;
+    overlay.classList.remove('show');
+  }
+
+  function resume() {
+    closeOverlay();
+    if (state === 'ready' || state === 'playing') { startLoop(); }
+  }
+
+  function goMenu() {
+    stopLoop();
+    closeOverlay();
+    state = 'menu';
+    setScreen('menu');
+    menuIndex = levelIndex;
+    selectMenu(menuIndex);
+  }
+
+  function activateMenu() {
+    if (menuIndex < LEVELS.length) {
+      startLevel(menuIndex);
+    } else {
+      exitApp();
+    }
+  }
+
+  function exitApp() {
+    if (history.length > 1) {
+      history.back();
+      return;
+    }
+    location.href = '../index.html';
+  }
+
+  function moveOverlay(d) {
+    var n = ovItems.length;
+    if (!n) { return; }
+    ovIndex = (ovIndex + d + n) % n;
+    selectOverlay(ovIndex);
+  }
+
+  function activateOverlay() {
+    var item = ovItems[ovIndex];
+    if (item) { item.run(); }
+  }
+
+  function onKeyDown(e) {
+    var key = e.keyCode || e.which;
+    if ((key >= 37 && key <= 40) || isOk(key) || isBack(key)) { e.preventDefault(); }
+    if (e.repeat && isOk(key)) { return; }
+
+    if (overlayOpen) {
+      if (key === 38) { moveOverlay(-1); }
+      else if (key === 40) { moveOverlay(1); }
+      else if (isOk(key)) { activateOverlay(); }
+      else if (isBack(key)) { resume(); }
+      return;
+    }
+
+    if (screen === 'menu') {
+      if (key === 38) { menuIndex = (menuIndex + MENU_LEN - 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (key === 40) { menuIndex = (menuIndex + 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (isOk(key)) { activateMenu(); }
+      else if (isBack(key)) { exitApp(); }
+      return;
+    }
+
+    if (isOk(key)) { flap(); }
+    else if (isBack(key)) {
+      if (state === 'dead') { showOverlay('lose', resultReason); }
+      else { stopLoop(); showOverlay('pause'); }
+    }
+  }
+
+  document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', function () { resize(); draw(); });
+  window.addEventListener('blur', function () { if (state === 'ready' || state === 'playing') { stopLoop(); } });
+
+  buildMenu();
+  updateHud();
+})();
+</script>
+</body>
+</html>

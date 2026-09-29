@@ -1,0 +1,798 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Рыба-пожиратель — MSX</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#070a0f;
+    --line:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.94);
+    --muted:rgba(255,255,255,.5);
+    --accent:#4c8dff;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:clamp(15px,1.05vw,24px);}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(60% 55% at 50% 0%,rgba(34,211,238,.14),transparent 70%),
+      radial-gradient(50% 45% at 85% 100%,rgba(76,141,255,.1),transparent 70%);
+  }
+  #app{position:relative;height:100%;}
+  .screen{
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+    padding:2.2rem 2.6rem;
+  }
+  .screen.active{display:flex;}
+  .brand{text-align:center;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);}
+  .menu-head{margin-top:4vh;text-align:center;}
+  .menu-head h1{margin:.3rem 0 0;font-size:3.2rem;font-weight:650;letter-spacing:-.02em;}
+  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
+  .menu-list{display:flex;flex-direction:column;gap:.7rem;width:min(36rem,100%);margin:2.4rem auto 0;}
+  .menu-item{
+    display:flex;align-items:center;gap:1rem;padding:1rem 1.4rem;border-radius:1rem;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:1.05rem;
+    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
+  }
+  .menu-item .name{font-weight:550;}
+  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;}
+  .menu-item.sel{
+    background:rgba(76,141,255,.16);border-color:rgba(76,141,255,.65);transform:scale(1.03);
+    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
+  }
+  .hud{display:flex;gap:1.2rem;justify-content:center;}
+  .hud-item{
+    display:flex;flex-direction:column;align-items:center;min-width:8.5rem;padding:.5rem 1.2rem;
+    border:1px solid var(--line);border-radius:.9rem;background:rgba(255,255,255,.03);
+  }
+  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
+  .board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:1.2rem 0;}
+  .board-wrap canvas{
+    display:block;width:100%;height:100%;border-radius:1rem;border:1px solid var(--line);background:#08202e;
+  }
+  .hint-bar{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;justify-content:center;color:var(--muted);font-size:.85rem;}
+  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
+  .kbd{
+    border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:.45rem;
+    padding:.1rem .5rem;color:rgba(255,255,255,.85);font-size:.8rem;
+  }
+  .overlay{
+    position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,7,11,.75);opacity:0;pointer-events:none;transition:opacity .15s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .panel{
+    width:min(34rem,86vw);padding:2rem;border-radius:1.4rem;border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
+  }
+  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
+  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
+  .panel .menu-list{margin:0;width:100%;}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="screen-menu" class="screen active">
+    <div class="brand">MSX Games</div>
+    <div class="menu-head">
+      <h1>Рыба-пожиратель</h1>
+      <p class="sub">Ешь только ртом — подплывай спереди. Крупные рыбы активно охотятся на тебя</p>
+    </div>
+    <nav id="menuList" class="menu-list"></nav>
+    <div style="flex:1"></div>
+    <div class="hint-bar">
+      <span><b class="kbd">▲ ▼</b> выбор</span>
+      <span><b class="kbd">OK</b> играть</span>
+      <span><b class="kbd">BACK</b> выход</span>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
+      <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
+      <div class="hud-item"><span class="hud-label">Размер</span><b id="hudSize">0</b></div>
+      <div class="hud-item"><span class="hud-label">Уровень</span><b id="hudLevel">1</b></div>
+    </div>
+    <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
+    <div class="hint-bar">
+      <span><b class="kbd">◀ ▲ ▼ ▶</b> плыть</span>
+      <span><b class="kbd">OK</b> рывок</span>
+      <span><b class="kbd">BACK</b> пауза</span>
+    </div>
+  </section>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="panel">
+    <h2 id="ovTitle"></h2>
+    <p id="ovText" class="ov-text"></p>
+    <nav id="ovList" class="menu-list"></nav>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LEVELS = [
+    { name: 'Мелководье', spawn: 1.15, pop: 9,  threat: 0.16 },
+    { name: 'Обычная',    spawn: 0.85, pop: 12, threat: 0.26 },
+    { name: 'Бездна',     spawn: 0.6,  pop: 15, threat: 0.36 }
+  ];
+  var OK_CODES = [13, 32];
+  var BACK_CODES = [8, 27, 166, 461, 10009];
+
+  var WORLD_H = 500;
+  var START_SIZE = 13;
+  var MAX_SIZE = 46;
+  var PLAYER_ACCEL = 1500;
+  var PLAYER_MAX = 205;
+  var DASH_IMPULSE = 430;
+  var DASH_COOLDOWN = 1.1;
+
+  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
+  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
+
+  var screenMenu = document.getElementById('screen-menu');
+  var screenGame = document.getElementById('screen-game');
+  var menuList = document.getElementById('menuList');
+  var boardWrap = document.getElementById('boardWrap');
+  var canvas = document.getElementById('scene');
+  var ctx = canvas.getContext('2d');
+  var hudScore = document.getElementById('hudScore');
+  var hudBest = document.getElementById('hudBest');
+  var hudSize = document.getElementById('hudSize');
+  var hudLevel = document.getElementById('hudLevel');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var ovList = document.getElementById('ovList');
+
+  var screen = 'menu';
+  var state = 'menu';
+  var levelIndex = 1;
+  var menuIndex = 1;
+  var MENU_LEN = LEVELS.length + 1;
+
+  var k = 1;
+  var worldW = 900;
+  var worldH = WORLD_H;
+  var water = null;
+
+  var player = { x: 0, y: 0, vx: 0, vy: 0, size: START_SIZE, angle: 0 };
+  var fishes = [];
+  var bubbles = [];
+  var spawnTimer = 0;
+  var dashTimer = 0;
+  var score = 0;
+  var best = 0;
+  var eaten = 0;
+  var level = 1;
+  var hurtFlash = 0;
+  var mouthOpen = 0;
+  var invuln = 0;
+  var flashText = '';
+  var flashTimer = 0;
+  var input = { x: 0, y: 0 };
+  var held = {};
+
+  var rafId = null;
+  var lastTime = 0;
+  var overlayOpen = false;
+  var ovItems = [];
+  var ovIndex = 0;
+  var resultReason = '';
+
+  try { best = parseInt(localStorage.getItem('msxfishbest'), 10) || 0; } catch (err) { best = 0; }
+
+  function nowMs() {
+    return (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+  }
+
+  function buildMenuItem(label, meta) {
+    var item = document.createElement('div');
+    item.className = 'menu-item';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+    item.appendChild(name);
+    if (meta) {
+      var m = document.createElement('span');
+      m.className = 'meta';
+      m.textContent = meta;
+      item.appendChild(m);
+    }
+    return item;
+  }
+
+  function buildMenu() {
+    menuList.innerHTML = '';
+    for (var i = 0; i < LEVELS.length; i++) {
+      menuList.appendChild(buildMenuItem(LEVELS[i].name, 'рыб ' + LEVELS[i].pop));
+    }
+    menuList.appendChild(buildMenuItem('Выход', null));
+    selectMenu(menuIndex);
+  }
+
+  function selectMenu(i) {
+    for (var n = 0; n < menuList.children.length; n++) {
+      menuList.children[n].classList.toggle('sel', n === i);
+    }
+  }
+
+  function setScreen(name) {
+    screen = name;
+    screenMenu.classList.toggle('active', name === 'menu');
+    screenGame.classList.toggle('active', name === 'game');
+  }
+
+  function cfg() { return LEVELS[levelIndex]; }
+
+  function updateHud() {
+    hudScore.textContent = score;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('msxfishbest', String(best)); } catch (err) {}
+    }
+    hudBest.textContent = best;
+    hudSize.textContent = Math.round(player.size);
+    hudLevel.textContent = level;
+  }
+
+  function resize() {
+    var rect = boardWrap.getBoundingClientRect();
+    var w = Math.max(1, Math.round(rect.width));
+    var h = Math.max(1, Math.round(rect.height));
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    k = canvas.height / WORLD_H;
+    worldW = canvas.width / k;
+    worldH = WORLD_H;
+    water = null;
+    if (player.x > worldW) { player.x = worldW / 2; }
+    if (player.y > worldH) { player.y = worldH / 2; }
+  }
+
+  function startLevel(li) {
+    levelIndex = li;
+    stopLoop();
+    closeOverlay();
+    setScreen('game');
+    resize();
+    player.x = worldW / 2;
+    player.y = worldH / 2;
+    player.vx = 0;
+    player.vy = 0;
+    player.size = START_SIZE;
+    player.angle = 0;
+    fishes = [];
+    bubbles = [];
+    spawnTimer = 0;
+    dashTimer = 0;
+    score = 0;
+    eaten = 0;
+    level = 1;
+    hurtFlash = 0;
+    mouthOpen = 0;
+    invuln = 3.0;
+    flashText = '';
+    flashTimer = 0;
+    for (var i = 0; i < cfg().pop; i++) { spawnFish(true); }
+    updateHud();
+    state = 'playing';
+    draw();
+    startLoop();
+  }
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function spawnFish(anywhere) {
+    var c = cfg();
+    var hunters = 0;
+    for (var hi = 0; hi < fishes.length; hi++) {
+      if (fishes[hi].size > player.size * 1.15) { hunters++; }
+    }
+    var maxHunters = anywhere ? 1 : (player.size < 18 ? 2 : (player.size < 26 ? 3 : 4));
+
+    var roll = Math.random();
+    var size;
+    if (roll < (anywhere ? 0.5 : 0.4)) { size = player.size * rand(0.42, 0.84); }
+    else if (roll < 0.72 || hunters >= maxHunters) { size = player.size * rand(0.88, 1.08); }
+    else { size = player.size * rand(1.16, 1.55); }
+    size = Math.max(6, Math.min(c.threat > 0 ? MAX_SIZE * 0.95 : 30, size));
+
+    var side = Math.floor(Math.random() * 4);
+    var x, y;
+    if (anywhere) {
+      var tries = 0;
+      do {
+        x = rand(40, Math.max(60, worldW - 40));
+        y = rand(40, Math.max(60, worldH - 40));
+        tries++;
+      } while (tries < 30 && Math.hypot(x - player.x, y - player.y) < 340);
+    } else if (side === 0) { x = -30; y = rand(30, worldH - 30); }
+    else if (side === 1) { x = worldW + 30; y = rand(30, worldH - 30); }
+    else if (side === 2) { y = -30; x = rand(30, worldW - 30); }
+    else { y = worldH + 30; x = rand(30, worldW - 30); }
+
+    var speed = rand(38, 96) * (size > player.size ? 0.85 : 1.15);
+    var angle = anywhere
+      ? rand(0, Math.PI * 2)
+      : Math.atan2(worldH / 2 - y, worldW / 2 - x) + rand(-0.8, 0.8);
+
+    fishes.push({
+      x: x, y: y, size: size,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      angle: angle,
+      hue: Math.floor(rand(0, 360)),
+      wobble: rand(0, 6.28)
+    });
+  }
+
+  function updateFish(f, dt) {
+    var c = cfg();
+    f.wobble += dt * 3;
+    var dx = player.x - f.x;
+    var dy = player.y - f.y;
+    var dist = Math.hypot(dx, dy) || 1;
+    var playerCanEat = player.size > f.size * 1.15;
+    var fishCanEat = f.size > player.size * 1.15;
+    var desired = null;
+    var fleeing = false;
+
+    if (playerCanEat && dist < 260) {
+      desired = Math.atan2(-dy, -dx);
+      fleeing = true;
+    } else if (fishCanEat && invuln <= 0) {
+      var ratio = f.size / Math.max(1, player.size);
+      var chaseRange = 200 + Math.min(180, ratio * 120);
+      if (player.size < 18) { chaseRange += 70; }
+      else if (player.size < 26) { chaseRange += 30; }
+      if (dist < chaseRange) { desired = Math.atan2(dy, dx); }
+    }
+
+    if (desired !== null) {
+      var turn = (fleeing ? 2.4 : 2.7) * dt;
+      var diff = desired - f.angle;
+      while (diff > Math.PI) { diff -= Math.PI * 2; }
+      while (diff < -Math.PI) { diff += Math.PI * 2; }
+      f.angle += Math.max(-turn, Math.min(turn, diff));
+      var sp = Math.hypot(f.vx, f.vy);
+      if (!fleeing) {
+        var huntRatio = f.size / Math.max(1, player.size);
+        sp = Math.max(sp, 105 + Math.min(30, huntRatio * 10));
+      } else {
+        sp = Math.max(sp, 110);
+      }
+      f.vx = Math.cos(f.angle) * sp;
+      f.vy = Math.sin(f.angle) * sp;
+    }
+
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+
+    if (f.x < -90) { f.vx = Math.abs(f.vx); f.angle = Math.atan2(f.vy, f.vx); }
+    if (f.x > worldW + 90) { f.vx = -Math.abs(f.vx); f.angle = Math.atan2(f.vy, f.vx); }
+    if (f.y < -90) { f.vy = Math.abs(f.vy); f.angle = Math.atan2(f.vy, f.vx); }
+    if (f.y > worldH + 90) { f.vy = -Math.abs(f.vy); f.angle = Math.atan2(f.vy, f.vx); }
+    return true;
+  }
+
+  function mouthOf(e) {
+    return {
+      x: e.x + Math.cos(e.angle) * e.size * 0.9,
+      y: e.y + Math.sin(e.angle) * e.size * 0.9
+    };
+  }
+
+  function eatCheck(dt) {
+    var m = mouthOf(player);
+    var mouthR = player.size * 0.2;
+    for (var i = fishes.length - 1; i >= 0; i--) {
+      var f = fishes[i];
+      if (player.size > f.size * 1.15) {
+        var reach = f.size * 0.85 + player.size * 0.45;
+        var d = Math.hypot(f.x - m.x, f.y - m.y) || 0.001;
+        if (d < reach * 3.0) {
+          mouthOpen = Math.max(mouthOpen, 1 - d / (reach * 3.0));
+          var pull = (1 - d / (reach * 3.0)) * 400 * dt;
+          f.x += (m.x - f.x) / d * pull;
+          f.y += (m.y - f.y) / d * pull;
+        }
+        if (d > reach) { continue; }
+        mouthOpen = 1;
+        fishes.splice(i, 1);
+        score += Math.round(f.size) * 2;
+        eaten++;
+        player.size = Math.min(MAX_SIZE, Math.sqrt(player.size * player.size + f.size * f.size * 0.8));
+        var newLevel = 1 + Math.floor(eaten / 5);
+        if (newLevel !== level) {
+          level = newLevel;
+          flashText = 'Уровень ' + level;
+          flashTimer = 1.3;
+        }
+        if (player.size >= MAX_SIZE) {
+          win();
+          return;
+        }
+        updateHud();
+      } else if (f.size > player.size * 1.15) {
+        if (invuln > 0) { continue; }
+        var fm = mouthOf(f);
+        var d2 = Math.hypot(player.x - fm.x, player.y - fm.y);
+        if (d2 > player.size * 0.95 + f.size * 0.35) { continue; }
+        die('Вас съела рыба размером ' + Math.round(f.size) + '.');
+        return;
+      } else {
+        var d3 = Math.hypot(f.x - m.x, f.y - m.y);
+        if (d3 < (f.size + player.size) * 0.55) { hurtFlash = 0.25; }
+      }
+    }
+  }
+
+  function update(dt) {
+    if (state !== 'playing') { return; }
+    var c = cfg();
+
+    player.vx += input.x * PLAYER_ACCEL * dt;
+    player.vy += input.y * PLAYER_ACCEL * dt;
+    var drag = Math.pow(0.06, dt);
+    player.vx *= drag;
+    player.vy *= drag;
+    var sp = Math.hypot(player.vx, player.vy);
+    if (sp > PLAYER_MAX) {
+      player.vx = player.vx / sp * PLAYER_MAX;
+      player.vy = player.vy / sp * PLAYER_MAX;
+    }
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    player.x = Math.max(player.size, Math.min(worldW - player.size, player.x));
+    player.y = Math.max(player.size, Math.min(worldH - player.size, player.y));
+    if (sp > 8) { player.angle = Math.atan2(player.vy, player.vx); }
+
+    if (dashTimer > 0) { dashTimer -= dt; }
+    if (hurtFlash > 0) { hurtFlash -= dt; }
+    if (mouthOpen > 0) { mouthOpen = Math.max(0, mouthOpen - dt * 2.4); }
+    if (invuln > 0) { invuln -= dt; }
+    if (flashTimer > 0) { flashTimer -= dt; }
+
+    spawnTimer -= dt;
+    while (spawnTimer <= 0 && fishes.length < c.pop) {
+      spawnFish(false);
+      spawnTimer += c.spawn * rand(0.7, 1.3);
+    }
+    if (spawnTimer <= 0) { spawnTimer = c.spawn; }
+
+    for (var i = fishes.length - 1; i >= 0; i--) {
+      updateFish(fishes[i], dt);
+      var f = fishes[i];
+      if (f.x < -160 || f.x > worldW + 160 || f.y < -160 || f.y > worldH + 160) {
+        fishes.splice(i, 1);
+      }
+    }
+
+    if (Math.random() < dt * 3) {
+      bubbles.push({ x: rand(0, worldW), y: worldH + 10, r: rand(2, 7), v: rand(18, 45) });
+    }
+    for (var b = bubbles.length - 1; b >= 0; b--) {
+      bubbles[b].y -= bubbles[b].v * dt;
+      if (bubbles[b].y < -20) { bubbles.splice(b, 1); }
+    }
+
+    eatCheck(dt);
+  }
+
+  function drawFishShape(x, y, size, angle, color, accent, isPlayer) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    if (isPlayer && (hurtFlash > 0 || invuln > 0) && Math.floor((hurtFlash + invuln) * 12) % 2 === 0) {
+      ctx.globalAlpha = 0.45;
+    }
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size, size * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.92, 0);
+    ctx.lineTo(-size * 1.5, -size * 0.55);
+    ctx.lineTo(-size * 1.5, size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    ctx.beginPath();
+    ctx.ellipse(0, -size * 0.22, size * 0.62, size * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(size * 0.42, -size * 0.16, size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#08131c';
+    ctx.beginPath();
+    ctx.arc(size * 0.48, -size * 0.16, size * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    var open = 0.3 + 0.7 * (isPlayer ? mouthOpen : 0.35);
+    ctx.fillStyle = isPlayer ? '#5a2b0c' : 'rgba(10,20,28,.55)';
+    ctx.beginPath();
+    ctx.moveTo(size * 0.52, 0);
+    ctx.lineTo(size * 1.14, -size * 0.36 * open);
+    ctx.lineTo(size * 1.14, size * 0.36 * open);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!water) {
+      water = ctx.createLinearGradient(0, 0, 0, WORLD_H);
+      water.addColorStop(0, '#062334');
+      water.addColorStop(0.6, '#073449');
+      water.addColorStop(1, '#03202e');
+    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.fillStyle = water;
+    ctx.fillRect(0, 0, worldW, worldH);
+
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    for (var s = 0; s < 6; s++) {
+      var yy = (s * 90 + (nowMs() / 40) % 90);
+      ctx.fillRect(0, yy, worldW, 26);
+    }
+
+    for (var b = 0; b < bubbles.length; b++) {
+      ctx.fillStyle = 'rgba(180,235,255,.18)';
+      ctx.beginPath();
+      ctx.arc(bubbles[b].x, bubbles[b].y, bubbles[b].r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (var i = 0; i < fishes.length; i++) {
+      var f = fishes[i];
+      var c1 = 'hsl(' + f.hue + ',58%,58%)';
+      var c2 = 'hsl(' + f.hue + ',60%,40%)';
+      drawFishShape(f.x, f.y, f.size, f.angle, c1, c2, false);
+    }
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(76,141,255,.85)';
+    ctx.shadowBlur = 26;
+    drawFishShape(player.x, player.y, player.size, player.angle, '#ffd248', '#e8a318', true);
+    ctx.restore();
+
+    if (dashTimer > 0) {
+      ctx.fillStyle = 'rgba(76,141,255,.35)';
+      ctx.fillRect(worldW - 150, worldH - 22, 120 * (1 - dashTimer / DASH_COOLDOWN), 8);
+    }
+
+    if (flashTimer > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, flashTimer) + ')';
+      ctx.font = '34px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(flashText, worldW / 2, 90);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function frame(ts) {
+    if (state !== 'playing') { return; }
+    var now = (typeof ts === 'number') ? ts : nowMs();
+    var dt = (now - lastTime) / 1000;
+    if (!isFinite(dt) || dt < 0) { dt = 0; }
+    if (dt > 0.05) { dt = 0.05; }
+    lastTime = now;
+    update(dt);
+    draw();
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function startLoop() {
+    stopLoop();
+    lastTime = nowMs();
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function stopLoop() {
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  function dash() {
+    if (state !== 'playing' || dashTimer > 0) { return; }
+    var ax = input.x, ay = input.y;
+    if (!ax && !ay) { ax = Math.cos(player.angle); ay = Math.sin(player.angle); }
+    var len = Math.hypot(ax, ay) || 1;
+    player.vx += ax / len * DASH_IMPULSE;
+    player.vy += ay / len * DASH_IMPULSE;
+    dashTimer = DASH_COOLDOWN;
+  }
+
+  function die(reason) {
+    stopLoop();
+    state = 'dead';
+    resultReason = reason || '';
+    draw();
+    showOverlay('lose', reason);
+  }
+
+  function win() {
+    stopLoop();
+    state = 'won';
+    draw();
+    showOverlay('win');
+  }
+
+  function buildOverlayList(items) {
+    ovList.innerHTML = '';
+    for (var i = 0; i < items.length; i++) {
+      ovList.appendChild(buildMenuItem(items[i].label, null));
+    }
+    selectOverlay(ovIndex);
+  }
+
+  function selectOverlay(i) {
+    for (var n = 0; n < ovList.children.length; n++) {
+      ovList.children[n].classList.toggle('sel', n === i);
+    }
+  }
+
+  function showOverlay(type, reason) {
+    var title = 'Пауза';
+    var text = 'Игра приостановлена.';
+    var items = [
+      { label: 'Продолжить', run: resume },
+      { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+      { label: 'Уровни', run: goMenu },
+      { label: 'Выход', run: exitApp }
+    ];
+    if (type === 'lose') {
+      title = 'Вас съели';
+      text = (reason || '') + ' Счёт: ' + score + '.';
+      items = [
+        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+        { label: 'Уровни', run: goMenu },
+        { label: 'Выход', run: exitApp }
+      ];
+    } else if (type === 'win') {
+      title = 'Победа';
+      text = 'Вы выросли до максимума! Счёт: ' + score + '.';
+      items = [
+        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
+        { label: 'Уровни', run: goMenu },
+        { label: 'Выход', run: exitApp }
+      ];
+    }
+    overlayOpen = true;
+    ovIndex = 0;
+    ovItems = items;
+    ovTitle.textContent = title;
+    ovText.textContent = text;
+    buildOverlayList(items);
+    overlay.classList.add('show');
+  }
+
+  function closeOverlay() {
+    overlayOpen = false;
+    overlay.classList.remove('show');
+  }
+
+  function resume() {
+    closeOverlay();
+    if (state === 'playing') { startLoop(); }
+  }
+
+  function goMenu() {
+    stopLoop();
+    closeOverlay();
+    state = 'menu';
+    setScreen('menu');
+    menuIndex = levelIndex;
+    selectMenu(menuIndex);
+  }
+
+  function activateMenu() {
+    if (menuIndex < LEVELS.length) { startLevel(menuIndex); }
+    else { exitApp(); }
+  }
+
+  function exitApp() {
+    if (history.length > 1) { history.back(); return; }
+    location.href = '../index.html';
+  }
+
+  function moveOverlay(d) {
+    var n = ovItems.length;
+    if (!n) { return; }
+    ovIndex = (ovIndex + d + n) % n;
+    selectOverlay(ovIndex);
+  }
+
+  function activateOverlay() {
+    var item = ovItems[ovIndex];
+    if (item) { item.run(); }
+  }
+
+  function onKeyDown(e) {
+    var key = e.keyCode || e.which;
+    if ((key >= 37 && key <= 40) || isOk(key) || isBack(key)) { e.preventDefault(); }
+    if (e.repeat && isOk(key)) { return; }
+
+    if (overlayOpen) {
+      if (key === 38) { moveOverlay(-1); }
+      else if (key === 40) { moveOverlay(1); }
+      else if (isOk(key)) { activateOverlay(); }
+      else if (isBack(key)) { resume(); }
+      return;
+    }
+
+    if (screen === 'menu') {
+      if (key === 38) { menuIndex = (menuIndex + MENU_LEN - 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (key === 40) { menuIndex = (menuIndex + 1) % MENU_LEN; selectMenu(menuIndex); }
+      else if (isOk(key)) { activateMenu(); }
+      else if (isBack(key)) { exitApp(); }
+      return;
+    }
+
+    if (key === 37) { held.left = true; }
+    else if (key === 39) { held.right = true; }
+    else if (key === 38) { held.up = true; }
+    else if (key === 40) { held.down = true; }
+    else if (isOk(key)) { dash(); }
+    else if (isBack(key)) {
+      if (state === 'dead' || state === 'won') { showOverlay(state === 'won' ? 'win' : 'lose', resultReason); }
+      else { stopLoop(); showOverlay('pause'); }
+    }
+    syncInput();
+  }
+
+  function onKeyUp(e) {
+    var key = e.keyCode || e.which;
+    if (key === 37) { held.left = false; }
+    else if (key === 39) { held.right = false; }
+    else if (key === 38) { held.up = false; }
+    else if (key === 40) { held.down = false; }
+    syncInput();
+  }
+
+  function syncInput() {
+    input.x = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+    input.y = (held.down ? 1 : 0) - (held.up ? 1 : 0);
+  }
+
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', function () { resize(); draw(); });
+  window.addEventListener('blur', function () { if (state === 'playing') { stopLoop(); } });
+
+  buildMenu();
+  updateHud();
+})();
+</script>
+</body>
+</html>

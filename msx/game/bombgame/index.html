@@ -244,6 +244,7 @@
     { name: 'Профессор', cols: 16, rows: 16, mines: 50 }
   ];
   var NUM_CLASS = ['', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8'];
+  var MENU_LEN = LEVELS.length + 1;
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
   var HOLD_MS = 420;
@@ -325,6 +326,7 @@
       var lv = LEVELS[i];
       menuList.appendChild(buildItem(lv.name, lv.cols + '×' + lv.rows + ' · ' + lv.mines + ' мин'));
     }
+    menuList.appendChild(buildItem('Выход', null));
     updateSel(menuList, state.menuIndex);
   }
 
@@ -636,21 +638,24 @@
       items = [
         { label: 'Продолжить', run: resumeGame },
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu }
+        { label: 'Уровни', run: goMenu },
+        { label: 'Выход', run: exitApp }
       ];
     } else if (type === 'win') {
       title = 'Победа';
       text = 'Поле очищено за ' + fmtTime(state.time) + '.';
       items = [
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu }
+        { label: 'Уровни', run: goMenu },
+        { label: 'Выход', run: exitApp }
       ];
     } else {
       title = 'Поражение';
       text = 'Вы наткнулись на мину.';
       items = [
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu }
+        { label: 'Уровни', run: goMenu },
+        { label: 'Выход', run: exitApp }
       ];
     }
     state.overlay = type;
@@ -680,8 +685,16 @@
   }
 
   function moveMenu(d) {
-    state.menuIndex = (state.menuIndex + d + LEVELS.length) % LEVELS.length;
+    state.menuIndex = (state.menuIndex + d + MENU_LEN) % MENU_LEN;
     updateSel(menuList, state.menuIndex);
+  }
+
+  function activateMenu() {
+    if (state.menuIndex < LEVELS.length) {
+      newGame(state.menuIndex);
+    } else {
+      exitApp();
+    }
   }
 
   function moveOverlay(d) {
@@ -727,7 +740,7 @@
     if (state.screen === 'menu') {
       if (k === 38) { moveMenu(-1); }
       else if (k === 40) { moveMenu(1); }
-      else if (isOk(k)) { newGame(state.menuIndex); }
+      else if (isOk(k)) { activateMenu(); }
       else if (isBack(k)) { exitApp(); }
       return;
     }
