@@ -14,7 +14,7 @@
           "iconSize": "large",
           "label": "Zona",
           "title": "m.zona.ms",
-          "action": "link:window:https://m.zona.ms"
+          "action": "link:https://m.zona.ms"
         }
       ]
     }
