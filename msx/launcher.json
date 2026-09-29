@@ -46,12 +46,14 @@
           "action": "cleaning"
         },
         {
-          "id": "app_game",
+          "id": "app_games",
           "type": "default",
           "layout": "0,3,4,3",
           "color": "#14304A",
-          "title": "Сапёр",
-          "titleFooter": "Игра для пульта",
+          "image": "https://ofmjo.github.io/img/games.png",
+          "imageFiller": "cover",
+          "title": "Игры",
+          "titleFooter": "Хаб с играми",
           "action": "link:https://ofmjo.github.io/msx/game/index.html"
         }
       ]
