@@ -38,10 +38,10 @@
           "type": "default",
           "layout": "8,0,4,3",
           "color": "#2D1B4E",
-          "image": "https://ofmjo.github.io/img/upd.png",
+          "image": "https://ofmjo.github.io/img/update.png",
           "imageFiller": "cover",
-          "title": "Обновить",
-          "titleFooter": "Очистить кэш и перезагрузить",
+          "title": "Перезагрузка",
+          "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
           "action": "cleaning"
         }
