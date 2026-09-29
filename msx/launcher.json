@@ -1,8 +1,8 @@
 {
-  "name": "Zona Launcher",
+  "name": "Домашний экран",
   "version": "1.1.1",
   "type": "pages",
-  "headline": "Zona",
+  "headline": "Домашний экран",
   "background": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1920&auto=format&fit=crop",
   "restore": true,
   "cache": true,
@@ -19,7 +19,7 @@
           "imageFiller": "cover",
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
-          "badge": "TOP",
+          "_badge": "TOP",
           "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         }
       ]
