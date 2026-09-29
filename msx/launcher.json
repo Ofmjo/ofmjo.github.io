@@ -2,7 +2,7 @@
   "name": "MSX Launcher",
   "version": "1.0.0",
   "type": "pages",
-  "headline": "MSX Launcher",
+  "transparent": 1,
   "background": "https://msx.benzac.de/img/bg2.jpg",
   "restore": true,
   "cache": true,
@@ -10,14 +10,29 @@
     {
       "items": [
         {
+          "type": "space",
+          "layout": "0,0,12,6",
+          "color": "rgba(8,12,18,0.55)"
+        },
+        {
+          "type": "space",
+          "layout": "4,0,4,3",
+          "offset": "0,0.5,0,0",
+          "color": "#1e252b",
+          "image": "https://msx.zona.ms/assets/logo_512_512.png",
+          "imageFiller": "fit"
+        },
+        {
           "id": "app_zona",
           "type": "default",
-          "layout": "0,0,4,3",
-          "color": "#19394f",
-          "image": "https://msx.zona.ms/assets/logo_512_512.png",
-          "imageFiller": "cover",
+          "layout": "4,3,4,2",
+          "offset": "0,0.5,0,0",
+          "color": "msx-glass",
+          "alignment": "center",
+          "centration": "title",
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
+          "focus": true,
           "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         }
       ]
