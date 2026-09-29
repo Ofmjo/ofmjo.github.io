@@ -1,7 +1,7 @@
 {
   "name": "Zona Launcher",
   "version": "1.0.0",
-  "parameter": "content:{PREFIX}{SERVER}/msx/home.json",
+  "parameter": "content:https://ofmjo.github.io/msx/home.json",
   "welcome": "content",
   "launcher": {
     "icon": "movie",
