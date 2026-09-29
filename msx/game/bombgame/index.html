@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Сапёр — MSX</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#070a0f;
+    --line:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.94);
+    --muted:rgba(255,255,255,.5);
+    --accent:#4c8dff;
+    --danger:#ff4d4d;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:clamp(15px,1.05vw,24px);}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(60% 55% at 50% 0%,rgba(76,141,255,.16),transparent 70%),
+      radial-gradient(50% 45% at 85% 100%,rgba(140,69,247,.12),transparent 70%);
+  }
+  #app{position:relative;height:100%;}
+  .screen{
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+    padding:2.2rem 2.6rem;
+  }
+  .screen.active{display:flex;}
+  .brand{
+    text-align:center;
+    font-size:.7rem;
+    letter-spacing:.24em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .menu-head{margin-top:4vh;text-align:center;}
+  .menu-head h1{
+    margin:.3rem 0 0;
+    font-size:3.4rem;
+    font-weight:650;
+    letter-spacing:-.02em;
+  }
+  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
+  .menu-list{
+    display:flex;
+    flex-direction:column;
+    gap:.7rem;
+    width:min(36rem,100%);
+    margin:2.4rem auto 0;
+  }
+  .menu-item{
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    padding:1rem 1.4rem;
+    border-radius:1rem;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.03);
+    font-size:1.05rem;
+    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
+  }
+  .menu-item .name{font-weight:550;}
+  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums;}
+  .menu-item.sel{
+    background:rgba(76,141,255,.16);
+    border-color:rgba(76,141,255,.65);
+    transform:scale(1.03);
+    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
+  }
+  .hud{display:flex;gap:1.4rem;justify-content:center;}
+  .hud-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:8.5rem;
+    padding:.5rem 1.2rem;
+    border:1px solid var(--line);
+    border-radius:.9rem;
+    background:rgba(255,255,255,.03);
+  }
+  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
+  .board-wrap{
+    flex:1;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:1rem 0;
+  }
+  .board{
+    --cols:9;
+    --rows:9;
+    --cell:44px;
+    --gap:2px;
+    display:grid;
+    grid-template-columns:repeat(var(--cols),var(--cell));
+    grid-template-rows:repeat(var(--rows),var(--cell));
+    gap:var(--gap);
+  }
+  .cell{
+    width:var(--cell);
+    height:var(--cell);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+    font-weight:700;
+    font-size:calc(var(--cell) * .48);
+    border-radius:calc(var(--cell) * .16);
+    background:#1b2430;
+    border:1px solid rgba(255,255,255,.05);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .08s ease;
+  }
+  .cell.open{background:#0e131a;border-color:rgba(255,255,255,.03);box-shadow:none;}
+  .cell.flag{color:#ff6b6b;}
+  .cell.mine{background:#3a1113;color:#ffd0d0;}
+  .cell.boom{background:var(--danger);color:#fff;}
+  .cell.wrong{background:#2a1010;color:#ff9a9a;}
+  .cell.cursor{
+    outline:3px solid var(--accent);
+    outline-offset:1px;
+    transform:scale(1.08);
+    z-index:2;
+    box-shadow:0 0 0 4px rgba(76,141,255,.25),0 0 30px rgba(76,141,255,.55);
+  }
+  .cell.n1{color:#4c8dff;}
+  .cell.n2{color:#34d399;}
+  .cell.n3{color:#f87171;}
+  .cell.n4{color:#c084fc;}
+  .cell.n5{color:#fbbf24;}
+  .cell.n6{color:#22d3ee;}
+  .cell.n7{color:#e5e7eb;}
+  .cell.n8{color:#9ca3af;}
+  .hint-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.5rem 1.6rem;
+    justify-content:center;
+    color:var(--muted);
+    font-size:.85rem;
+  }
+  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
+  .kbd{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.05);
+    border-radius:.45rem;
+    padding:.1rem .5rem;
+    color:rgba(255,255,255,.85);
+    font-size:.8rem;
+  }
+  .overlay{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(4,7,11,.75);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .panel{
+    width:min(34rem,86vw);
+    padding:2rem;
+    border-radius:1.4rem;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
+  }
+  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
+  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
+  .panel .menu-list{margin:0;width:100%;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <section id="screen-menu" class="screen active">
+    <div class="brand">MSX Games</div>
+    <div class="menu-head">
+      <h1>Сапёр</h1>
+      <p class="sub">Выберите уровень сложности</p>
+    </div>
+    <nav id="menuList" class="menu-list"></nav>
+    <div style="flex:1"></div>
+    <div class="hint-bar">
+      <span><b class="kbd">▲ ▼</b> выбор</span>
+      <span><b class="kbd">OK</b> начать</span>
+      <span><b class="kbd">BACK</b> выход</span>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">Мины</span><b id="hudMines">0</b></div>
+      <div class="hud-item"><span class="hud-label">Время</span><b id="hudTime">0:00</b></div>
+      <div class="hud-item"><span class="hud-label">Уровень</span><b id="hudLevel">—</b></div>
+    </div>
+    <div id="boardWrap" class="board-wrap"><div id="board" class="board"></div></div>
+    <div class="hint-bar">
+      <span><b class="kbd">◀ ▲ ▼ ▶</b> курсор</span>
+      <span><b class="kbd">OK</b> открыть</span>
+      <span><b class="kbd">удержание OK</b> флаг</span>
+      <span><b class="kbd">BACK</b> пауза</span>
+    </div>
+  </section>
+
+  <div id="overlay" class="overlay">
+    <div class="panel">
+      <h2 id="ovTitle"></h2>
+      <p id="ovText" class="ov-text"></p>
+      <nav id="ovList" class="menu-list"></nav>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var LEVELS = [
+    { name: 'Новичок',   cols: 9,  rows: 9,  mines: 10 },
+    { name: 'Любитель',  cols: 12, rows: 12, mines: 25 },
+    { name: 'Профессор', cols: 16, rows: 16, mines: 50 }
+  ];
+  var NUM_CLASS = ['', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8'];
+  var OK_CODES = [13, 32];
+  var BACK_CODES = [8, 27, 166, 461, 10009];
+  var HOLD_MS = 420;
+
+  function el(id) { return document.getElementById(id); }
+
+  var screenMenu = el('screen-menu');
+  var screenGame = el('screen-game');
+  var menuList = el('menuList');
+  var boardEl = el('board');
+  var boardWrap = el('boardWrap');
+  var hudMines = el('hudMines');
+  var hudTime = el('hudTime');
+  var hudLevel = el('hudLevel');
+  var overlay = el('overlay');
+  var ovTitle = el('ovTitle');
+  var ovText = el('ovText');
+  var ovList = el('ovList');
+
+  var state = {
+    screen: 'menu',
+    menuIndex: 0,
+    level: 0,
+    cells: null,
+    cellEls: [],
+    cols: 0,
+    rows: 0,
+    mineCount: 0,
+    cursor: 0,
+    started: false,
+    finished: false,
+    flags: 0,
+    revealed: 0,
+    time: 0,
+    timer: null,
+    overlay: null,
+    ovIndex: 0,
+    ovItems: []
+  };
+
+  var okDown = false;
+  var okLong = false;
+  var okTimer = null;
+
+  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
+  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
+
+  function fmtTime(t) {
+    var m = Math.floor(t / 60);
+    var s = t % 60;
+    return m + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  function buildItem(label, meta) {
+    var item = document.createElement('div');
+    item.className = 'menu-item';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+    item.appendChild(name);
+    if (meta) {
+      var m = document.createElement('span');
+      m.className = 'meta';
+      m.textContent = meta;
+      item.appendChild(m);
+    }
+    return item;
+  }
+
+  function updateSel(container, index) {
+    for (var i = 0; i < container.children.length; i++) {
+      container.children[i].classList.toggle('sel', i === index);
+    }
+  }
+
+  function buildMenu() {
+    menuList.innerHTML = '';
+    for (var i = 0; i < LEVELS.length; i++) {
+      var lv = LEVELS[i];
+      menuList.appendChild(buildItem(lv.name, lv.cols + '×' + lv.rows + ' · ' + lv.mines + ' мин'));
+    }
+    updateSel(menuList, state.menuIndex);
+  }
+
+  function setScreen(name) {
+    state.screen = name;
+    screenMenu.classList.toggle('active', name === 'menu');
+    screenGame.classList.toggle('active', name === 'game');
+  }
+
+  function neighbors(i) {
+    var x = i % state.cols;
+    var y = Math.floor(i / state.cols);
+    var out = [];
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) { continue; }
+        var nx = x + dx;
+        var ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.cols || ny >= state.rows) { continue; }
+        out.push(ny * state.cols + nx);
+      }
+    }
+    return out;
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+  }
+
+  function placeMines(safe) {
+    var total = state.cols * state.rows;
+    var banned = [safe];
+    var nb = neighbors(safe);
+    for (var i = 0; i < nb.length; i++) { banned.push(nb[i]); }
+    var pool = [];
+    for (var p = 0; p < total; p++) {
+      if (banned.indexOf(p) === -1) { pool.push(p); }
+    }
+    for (var q = 0; q < total && pool.length < state.mineCount; q++) {
+      if (q !== safe && banned.indexOf(q) === -1 && pool.indexOf(q) === -1) { pool.push(q); }
+    }
+    shuffle(pool);
+    for (var m = 0; m < state.mineCount && m < pool.length; m++) {
+      state.cells[pool[m]].mine = true;
+    }
+    for (var c = 0; c < total; c++) {
+      if (state.cells[c].mine) { continue; }
+      var n = 0;
+      var around = neighbors(c);
+      for (var a = 0; a < around.length; a++) {
+        if (state.cells[around[a]].mine) { n++; }
+      }
+      state.cells[c].count = n;
+    }
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    state.cellEls = [];
+    var total = state.cols * state.rows;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < total; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      frag.appendChild(cell);
+      state.cellEls.push(cell);
+    }
+    boardEl.appendChild(frag);
+  }
+
+  function layoutBoard() {
+    if (!state.cells || state.screen !== 'game') { return; }
+    var rect = boardWrap.getBoundingClientRect();
+    var pad = parseFloat(getComputedStyle(boardWrap).paddingTop) || 0;
+    var gap = 2;
+    var availW = rect.width - 6;
+    var availH = rect.height - pad * 2 - 6;
+    var cw = (availW - gap * (state.cols - 1)) / state.cols;
+    var ch = (availH - gap * (state.rows - 1)) / state.rows;
+    var size = Math.floor(Math.min(cw, ch));
+    if (size < 16) { size = 16; }
+    boardEl.style.setProperty('--cols', state.cols);
+    boardEl.style.setProperty('--rows', state.rows);
+    boardEl.style.setProperty('--gap', gap + 'px');
+    boardEl.style.setProperty('--cell', size + 'px');
+  }
+
+  function updateCell(i) {
+    var c = state.cells[i];
+    var e = state.cellEls[i];
+    var cls = 'cell';
+    var txt = '';
+    if (c.revealed && c.mine) {
+      cls += c.boom ? ' mine boom' : ' mine';
+      txt = '●';
+    } else if (c.revealed) {
+      cls += ' open';
+      if (c.count > 0) {
+        cls += ' ' + NUM_CLASS[c.count];
+        txt = String(c.count);
+      }
+    } else if (c.flagged) {
+      if (state.finished && !c.mine) {
+        cls += ' flag wrong';
+        txt = '✕';
+      } else {
+        cls += ' flag';
+        txt = '⚑';
+      }
+    } else if (c.mine && state.finished) {
+      cls += ' open mine';
+      txt = '●';
+    }
+    if (i === state.cursor && !state.finished) { cls += ' cursor'; }
+    e.className = cls;
+    if (e.textContent !== txt) { e.textContent = txt; }
+  }
+
+  function renderAll() {
+    for (var i = 0; i < state.cells.length; i++) { updateCell(i); }
+  }
+
+  function updateHud() {
+    hudMines.textContent = state.mineCount - state.flags;
+    hudTime.textContent = fmtTime(state.time);
+  }
+
+  function startTimer() {
+    stopTimer();
+    state.timer = setInterval(function () {
+      if (state.time < 999) { state.time++; }
+      hudTime.textContent = fmtTime(state.time);
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (state.timer) {
+      clearInterval(state.timer);
+      state.timer = null;
+    }
+  }
+
+  function newGame(levelIndex) {
+    stopTimer();
+    closeOverlay();
+    state.level = levelIndex;
+    var lv = LEVELS[levelIndex];
+    state.cols = lv.cols;
+    state.rows = lv.rows;
+    state.mineCount = lv.mines;
+    var total = lv.cols * lv.rows;
+    state.cells = [];
+    for (var i = 0; i < total; i++) {
+      state.cells.push({ mine: false, revealed: false, flagged: false, count: 0, boom: false });
+    }
+    state.cursor = 0;
+    state.started = false;
+    state.finished = false;
+    state.flags = 0;
+    state.revealed = 0;
+    state.time = 0;
+    hudLevel.textContent = lv.name;
+    updateHud();
+    setScreen('game');
+    buildBoard();
+    layoutBoard();
+    renderAll();
+  }
+
+  function floodReveal(start) {
+    var stack = [start];
+    while (stack.length) {
+      var i = stack.pop();
+      var c = state.cells[i];
+      if (c.revealed || c.flagged) { continue; }
+      c.revealed = true;
+      state.revealed++;
+      if (c.count === 0 && !c.mine) {
+        var nb = neighbors(i);
+        for (var n = 0; n < nb.length; n++) {
+          if (!state.cells[nb[n]].revealed) { stack.push(nb[n]); }
+        }
+      }
+    }
+  }
+
+  function checkWin() {
+    if (state.revealed === state.cols * state.rows - state.mineCount) {
+      win();
+      return true;
+    }
+    return false;
+  }
+
+  function win() {
+    state.finished = true;
+    stopTimer();
+    for (var i = 0; i < state.cells.length; i++) {
+      if (state.cells[i].mine) { state.cells[i].flagged = true; }
+    }
+    state.flags = state.mineCount;
+    updateHud();
+    renderAll();
+    showOverlay('win');
+  }
+
+  function lose() {
+    state.finished = true;
+    stopTimer();
+    for (var i = 0; i < state.cells.length; i++) {
+      var c = state.cells[i];
+      if (c.mine && !c.flagged) { c.revealed = true; }
+    }
+    renderAll();
+    showOverlay('lose');
+  }
+
+  function openCell(i) {
+    if (state.screen !== 'game' || state.overlay || state.finished) { return; }
+    var c = state.cells[i];
+    if (c.flagged) { return; }
+    if (!state.started) {
+      placeMines(i);
+      state.started = true;
+      startTimer();
+    }
+    if (c.revealed) {
+      chord(i);
+      return;
+    }
+    if (c.mine) {
+      c.revealed = true;
+      c.boom = true;
+      lose();
+      return;
+    }
+    floodReveal(i);
+    renderAll();
+    checkWin();
+  }
+
+  function chord(i) {
+    var c = state.cells[i];
+    if (c.count === 0) { return; }
+    var nb = neighbors(i);
+    var flags = 0;
+    for (var n = 0; n < nb.length; n++) {
+      if (state.cells[nb[n]].flagged) { flags++; }
+    }
+    if (flags !== c.count) { return; }
+    for (var k = 0; k < nb.length; k++) {
+      var t = state.cells[nb[k]];
+      if (t.flagged || t.revealed) { continue; }
+      if (t.mine) {
+        t.revealed = true;
+        t.boom = true;
+        lose();
+        return;
+      }
+      floodReveal(nb[k]);
+      if (checkWin()) { return; }
+    }
+    renderAll();
+  }
+
+  function toggleFlag(i) {
+    if (state.screen !== 'game' || state.overlay || state.finished) { return; }
+    var c = state.cells[i];
+    if (c.revealed) { return; }
+    c.flagged = !c.flagged;
+    state.flags += c.flagged ? 1 : -1;
+    updateHud();
+    updateCell(i);
+  }
+
+  function moveCursor(dx, dy) {
+    var x = state.cursor % state.cols;
+    var y = Math.floor(state.cursor / state.cols);
+    var nx = Math.min(state.cols - 1, Math.max(0, x + dx));
+    var ny = Math.min(state.rows - 1, Math.max(0, y + dy));
+    var ni = ny * state.cols + nx;
+    if (ni === state.cursor) { return; }
+    var prev = state.cursor;
+    state.cursor = ni;
+    updateCell(prev);
+    updateCell(ni);
+  }
+
+  function buildOverlayList(items) {
+    ovList.innerHTML = '';
+    for (var i = 0; i < items.length; i++) {
+      ovList.appendChild(buildItem(items[i].label, null));
+    }
+    updateSel(ovList, state.ovIndex);
+  }
+
+  function showOverlay(type) {
+    var title = '';
+    var text = '';
+    var items = [];
+    if (type === 'pause') {
+      title = 'Пауза';
+      text = 'Игра приостановлена.';
+      items = [
+        { label: 'Продолжить', run: resumeGame },
+        { label: 'Новая игра', run: function () { newGame(state.level); } },
+        { label: 'Уровни', run: goMenu }
+      ];
+    } else if (type === 'win') {
+      title = 'Победа';
+      text = 'Поле очищено за ' + fmtTime(state.time) + '.';
+      items = [
+        { label: 'Новая игра', run: function () { newGame(state.level); } },
+        { label: 'Уровни', run: goMenu }
+      ];
+    } else {
+      title = 'Поражение';
+      text = 'Вы наткнулись на мину.';
+      items = [
+        { label: 'Новая игра', run: function () { newGame(state.level); } },
+        { label: 'Уровни', run: goMenu }
+      ];
+    }
+    state.overlay = type;
+    state.ovIndex = 0;
+    state.ovItems = items;
+    ovTitle.textContent = title;
+    ovText.textContent = text;
+    buildOverlayList(items);
+    overlay.classList.add('show');
+  }
+
+  function closeOverlay() {
+    overlay.classList.remove('show');
+    state.overlay = null;
+  }
+
+  function resumeGame() {
+    closeOverlay();
+    if (state.screen === 'game' && !state.finished) { startTimer(); }
+  }
+
+  function goMenu() {
+    stopTimer();
+    closeOverlay();
+    setScreen('menu');
+    updateSel(menuList, state.menuIndex);
+  }
+
+  function moveMenu(d) {
+    state.menuIndex = (state.menuIndex + d + LEVELS.length) % LEVELS.length;
+    updateSel(menuList, state.menuIndex);
+  }
+
+  function moveOverlay(d) {
+    var n = state.ovItems.length;
+    if (!n) { return; }
+    state.ovIndex = (state.ovIndex + d + n) % n;
+    updateSel(ovList, state.ovIndex);
+  }
+
+  function activateOverlay() {
+    var item = state.ovItems[state.ovIndex];
+    if (item) { item.run(); }
+  }
+
+  function exitApp() {
+    if (history.length > 1) {
+      history.back();
+      return;
+    }
+    location.href = '../index.html';
+  }
+
+  function clearOkTimer() {
+    if (okTimer) {
+      clearTimeout(okTimer);
+      okTimer = null;
+    }
+  }
+
+  function onKeyDown(e) {
+    var k = e.keyCode || e.which;
+    if ((k >= 37 && k <= 40) || isOk(k) || isBack(k)) { e.preventDefault(); }
+    if (e.repeat && isOk(k)) { return; }
+
+    if (state.overlay) {
+      if (k === 38) { moveOverlay(-1); }
+      else if (k === 40) { moveOverlay(1); }
+      else if (isOk(k)) { activateOverlay(); }
+      else if (isBack(k)) { resumeGame(); }
+      return;
+    }
+
+    if (state.screen === 'menu') {
+      if (k === 38) { moveMenu(-1); }
+      else if (k === 40) { moveMenu(1); }
+      else if (isOk(k)) { newGame(state.menuIndex); }
+      else if (isBack(k)) { exitApp(); }
+      return;
+    }
+
+    if (k === 37) { moveCursor(-1, 0); }
+    else if (k === 39) { moveCursor(1, 0); }
+    else if (k === 38) { moveCursor(0, -1); }
+    else if (k === 40) { moveCursor(0, 1); }
+    else if (isOk(k)) {
+      okDown = true;
+      okLong = false;
+      clearOkTimer();
+      okTimer = setTimeout(function () {
+        okLong = true;
+        toggleFlag(state.cursor);
+      }, HOLD_MS);
+    } else if (isBack(k)) {
+      if (state.finished) { goMenu(); }
+      else { stopTimer(); showOverlay('pause'); }
+    }
+  }
+
+  function onKeyUp(e) {
+    var k = e.keyCode || e.which;
+    if (!isOk(k)) { return; }
+    clearOkTimer();
+    if (okDown && !okLong) { openCell(state.cursor); }
+    okDown = false;
+    okLong = false;
+  }
+
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', layoutBoard);
+  window.addEventListener('blur', clearOkTimer);
+
+  buildMenu();
+  updateHud();
+})();
+</script>
+</body>
+</html>
