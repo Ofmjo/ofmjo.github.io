@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Радио</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --line:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.95);
+    --muted:rgba(255,255,255,.5);
+    --accent:#8833ff;
+    --hot:#ff3366;
+    --live:#33e07a;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:clamp(16px,1.1vw,26px);}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    background:radial-gradient(ellipse at top,#1a1033 0%,#0a0a14 60%,#05050a 100%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #app{position:relative;height:100%;display:flex;flex-direction:column;padding:2.6vh 4vw;}
+
+  .header{display:flex;align-items:center;gap:1rem;flex-shrink:0;}
+  .logo{
+    width:3.1rem;height:3.1rem;border-radius:1rem;flex-shrink:0;
+    background:linear-gradient(135deg,var(--hot) 0%,var(--accent) 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:1.05rem;letter-spacing:.06em;
+    box-shadow:0 10px 30px rgba(136,51,255,.35);
+  }
+  .header h1{margin:0;font-size:1.8rem;font-weight:700;}
+  .header .sub{color:var(--muted);font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;margin-top:.15rem;}
+
+  .topbar{display:flex;align-items:center;gap:.6rem;margin-top:1.2rem;flex-shrink:0;}
+  .chips{display:flex;gap:.55rem;flex:1;min-width:0;overflow:hidden;}
+  .chip{
+    padding:.5rem 1.05rem;border-radius:999px;
+    border:2px solid transparent;background:rgba(255,255,255,.04);
+    color:var(--muted);font-size:.98rem;white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .chip.on{
+    color:#fff;font-weight:600;
+    background:linear-gradient(135deg,var(--hot) 0%,var(--accent) 100%);
+    box-shadow:0 8px 26px rgba(136,51,255,.4);
+  }
+  .chip.focus{border-color:rgba(255,255,255,.92);box-shadow:0 0 0 4px rgba(255,255,255,.16),0 10px 30px rgba(136,51,255,.45);}
+  .exit-chip{
+    flex-shrink:0;padding:.5rem 1.35rem;border-radius:999px;
+    border:2px solid rgba(255,90,120,.5);background:rgba(255,51,102,.13);
+    color:#ffb3c4;font-size:.98rem;font-weight:600;white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .exit-chip.focus{
+    border-color:#ff5a78;color:#fff;
+    background:linear-gradient(135deg,var(--hot) 0%,#cc2255 100%);
+    box-shadow:0 0 0 5px rgba(255,90,120,.25),0 10px 32px rgba(255,51,102,.5);
+    transform:scale(1.05);
+  }
+
+  .nowplaying{
+    display:flex;visibility:hidden;align-items:center;gap:.7rem;flex-shrink:0;
+    margin-top:.9rem;padding:.55rem 1.1rem;border-radius:.9rem;
+    border:1px solid var(--line);background:rgba(255,255,255,.04);
+    font-size:.92rem;color:var(--text);overflow:hidden;
+  }
+  .nowplaying.show{visibility:visible;}
+  .nowplaying.live{border-color:rgba(51,224,122,.3);background:rgba(51,224,122,.08);}
+  .nowplaying.bad{border-color:rgba(255,90,120,.35);background:rgba(255,51,102,.08);color:#ffc2cd;}
+  .nowplaying .dot{
+    width:.6rem;height:.6rem;border-radius:50%;flex-shrink:0;
+    background:rgba(255,255,255,.35);
+  }
+  .nowplaying.live .dot{background:var(--live);box-shadow:0 0 12px rgba(51,224,122,.9);}
+  .nowplaying.bad .dot{background:#ff5a78;}
+  .nowplaying .np-state{font-size:.78rem;letter-spacing:.14em;color:var(--muted);}
+  .nowplaying .np-name{font-weight:650;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nowplaying .np-hint{margin-left:auto;color:rgba(255,255,255,.6);white-space:nowrap;}
+
+  .list-viewport{
+    position:relative;flex:1;min-height:0;margin-top:.9rem;
+    border-radius:1.2rem;overflow:hidden;
+    background:rgba(20,15,40,.42);border:1px solid var(--line);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  }
+  .list-track{
+    position:absolute;top:0;left:0;right:0;
+    padding:.7rem 1.5rem .7rem .7rem;
+    transition:transform .22s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+  }
+  ul{list-style:none;margin:0;padding:0;}
+
+  li{
+    display:flex;align-items:center;gap:1rem;
+    padding:.8rem 1.1rem;margin-bottom:.5rem;border-radius:.9rem;
+    border:2px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);
+    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
+  }
+  li .avatar{
+    width:2.6rem;height:2.6rem;border-radius:.7rem;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:.98rem;letter-spacing:.04em;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  li .info{flex:1;min-width:0;}
+  li .name{font-size:1.12rem;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  li .tag{font-size:.84rem;color:var(--muted);margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  li .onair{
+    flex-shrink:0;display:none;align-items:center;gap:.45rem;
+    color:var(--live);font-size:.78rem;letter-spacing:.14em;
+  }
+  li .onair::before{
+    content:"";width:.5rem;height:.5rem;border-radius:50%;
+    background:var(--live);box-shadow:0 0 12px rgba(51,224,122,.9);
+  }
+  li.playing .onair{display:inline-flex;}
+  li.sel{
+    border-color:transparent;transform:scale(1.015);transform-origin:center center;
+    background:linear-gradient(135deg,rgba(255,51,102,.22) 0%,rgba(136,51,255,.22) 100%);
+    box-shadow:0 10px 34px rgba(136,51,255,.35),inset 0 0 0 2px rgba(255,255,255,.16);
+  }
+  li.sel .name{font-weight:650;}
+  li.sel .tag{color:#d4c5ff;}
+  li:last-child{margin-bottom:0;}
+
+  .scroll-indicator{
+    position:absolute;right:.45rem;top:.7rem;bottom:.7rem;width:5px;
+    background:rgba(255,255,255,.06);border-radius:3px;pointer-events:none;
+  }
+  .scroll-thumb{
+    position:absolute;left:0;width:100%;border-radius:3px;
+    background:linear-gradient(180deg,var(--hot) 0%,var(--accent) 100%);
+    transition:top .22s ease-out,height .22s ease-out;
+  }
+
+  .hints{
+    flex-shrink:0;display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;justify-content:center;
+    color:var(--muted);font-size:.88rem;padding-top:1rem;
+  }
+  .hints span{display:inline-flex;align-items:center;gap:.4rem;}
+  .hints kbd{
+    padding:.15rem .55rem;border-radius:.4rem;font-family:inherit;font-size:.83rem;
+    background:rgba(255,255,255,.09);color:#c9b8ff;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo">FM</div>
+    <div>
+      <h1>Радио</h1>
+      <div class="sub" id="subtitle">Интернет-радио</div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div class="chips" id="chips"></div>
+    <div class="exit-chip" id="exitChip">Выход</div>
+  </div>
+
+  <div class="nowplaying" id="nowplaying">
+    <span class="dot"></span>
+    <span class="np-state" id="np-state"></span>
+    <span class="np-name" id="np-name"></span>
+    <span class="np-hint" id="np-hint">OK — стоп</span>
+  </div>
+
+  <div class="list-viewport" id="viewport">
+    <div class="list-track" id="track">
+      <ul id="station-list"></ul>
+    </div>
+    <div class="scroll-indicator"><div class="scroll-thumb" id="scroll-thumb"></div></div>
+  </div>
+
+  <div class="hints">
+    <span><kbd>◀ ▶</kbd> раздел</span>
+    <span><kbd>▲ ▼</kbd> станция</span>
+    <span><kbd>OK</kbd> пуск / стоп</span>
+    <span><kbd>▲ с первой</kbd> выход</span>
+    <span><kbd>BACK</kbd> выход</span>
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+(function () {
+  var CATEGORIES = [
+    {
+      name: 'Русские',
+      stations: [
+        { name: 'Русское Радио', url: 'https://rusradio.hostingradio.ru/rusradio128.mp3', tag: 'Pop' },
+        { name: 'Европа Плюс', url: 'https://ep256.hostingradio.ru:8052/europaplus256.mp3', tag: 'Pop / Hits' },
+        { name: 'D-FM', url: 'https://dfm.hostingradio.ru/dfm128.mp3', tag: 'Dance' },
+        { name: 'Хит FM', url: 'https://hitfm.hostingradio.ru/hitfm128.mp3', tag: 'Hits' },
+        { name: 'Maximum', url: 'https://maximum.hostingradio.ru/maximum128.mp3', tag: 'Rock' },
+        { name: 'Ретро FM', url: 'https://retroserver.streamr.ru:8043/retro256.mp3', tag: 'Retro' },
+        { name: 'Серебряный дождь', url: 'https://silverrain.hostingradio.ru/silver128.mp3', tag: 'Talk / Pop' },
+        { name: 'Монте-Карло', url: 'https://montecarlo.hostingradio.ru/montecarlo128.mp3', tag: 'Pop / Retro' },
+        { name: 'Radio Record', url: 'https://radiorecord.hostingradio.ru/rr_main96.aacp', tag: 'Dance / EDM' },
+        { name: 'Record Deep', url: 'https://radiorecord.hostingradio.ru/deep96.aacp', tag: 'Deep House' },
+        { name: 'Record Techno', url: 'https://radiorecord.hostingradio.ru/techno96.aacp', tag: 'Techno' },
+        { name: 'Record Trancemission', url: 'https://radiorecord.hostingradio.ru/tm96.aacp', tag: 'Trance' },
+        { name: 'Record Goa / Psy', url: 'https://radiorecord.hostingradio.ru/goa96.aacp', tag: 'Psy Trance' },
+        { name: 'Record Rock', url: 'https://radiorecord.hostingradio.ru/rock96.aacp', tag: 'Rock' },
+        { name: 'Record Rap', url: 'https://radiorecord.hostingradio.ru/rap96.aacp', tag: 'Hip-Hop' },
+        { name: 'Record Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', tag: 'Drum & Bass' }
+      ]
+    },
+    {
+      name: 'Мировые хиты',
+      stations: [
+        { name: 'Radio Paradise Main', url: 'https://stream.radioparadise.com/mp3-128', tag: 'Eclectic Rock' },
+        { name: 'Radio Paradise Rock', url: 'https://stream.radioparadise.com/rock-128', tag: 'Rock Mix' },
+        { name: 'Radio Paradise Mellow', url: 'https://stream.radioparadise.com/mellow-128', tag: 'Mellow' },
+        { name: 'Radio Paradise Global', url: 'https://stream.radioparadise.com/global-128', tag: 'World Music' },
+        { name: 'Radio Paradise Eclectic', url: 'https://stream.radioparadise.com/eclectic-128', tag: 'Eclectic' },
+        { name: 'KEXP Live', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', tag: 'Indie / Alt' },
+        { name: 'Classic FM UK', url: 'https://media-ice.musicradio.com/ClassicFMMP3', tag: 'Classical' },
+        { name: 'Smooth UK', url: 'https://media-ice.musicradio.com/SmoothUKMP3', tag: 'Easy Listening' },
+        { name: 'Capital FM', url: 'https://media-ice.musicradio.com/CapitalMP3', tag: 'Pop Hits' }
+      ]
+    }
+  ];
+
+  var KEY_OK_ENTER = 13;
+  var KEY_OK_SPACE = 32;
+  var KEY_LEFT = 37;
+  var KEY_UP = 38;
+  var KEY_RIGHT = 39;
+  var KEY_DOWN = 40;
+  var BACK_CODES = [8, 27, 166, 461, 10009, 4, 100, 101, 154];
+
+  var zone = 'list';
+  var catIndex = 0;
+  var topIndex = 0;
+  var stationIndex = 0;
+  var lastPos = [];
+  var cur = { cat: -1, idx: -1 };
+  var isPlaying = false;
+  var itemPositions = [];
+  var stationEls = [];
+  var trackHeight = 0;
+  var viewportHeight = 0;
+
+  var audio = document.getElementById('audio');
+  var track = document.getElementById('track');
+  var chipsEl = document.getElementById('chips');
+  var exitChip = document.getElementById('exitChip');
+  var listEl = document.getElementById('station-list');
+  var viewport = document.getElementById('viewport');
+  var thumb = document.getElementById('scroll-thumb');
+  var subtitle = document.getElementById('subtitle');
+  var nowplaying = document.getElementById('nowplaying');
+  var npState = document.getElementById('np-state');
+  var npName = document.getElementById('np-name');
+  var npHint = document.getElementById('np-hint');
+
+  function isOk(code) { return code === KEY_OK_ENTER || code === KEY_OK_SPACE; }
+  function isBack(code) { return BACK_CODES.indexOf(code) !== -1; }
+  function isArrow(code) {
+    return code === KEY_LEFT || code === KEY_RIGHT || code === KEY_UP || code === KEY_DOWN;
+  }
+
+  function initials(name) {
+    var parts = String(name).replace(/[^0-9A-Za-zА-Яа-яЁё\s-]+/g, ' ').trim().split(/[\s-]+/);
+    var a = parts[0] ? parts[0].charAt(0) : 'F';
+    var b = parts[1] ? parts[1].charAt(0) : (parts[0] ? parts[0].charAt(1) : 'M');
+    return (a + (b || '')).toUpperCase();
+  }
+
+  function avatarStyle(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) { h = (h * 31 + name.charCodeAt(i)) % 360; }
+    return 'background:linear-gradient(135deg,hsl(' + h + ',72%,52%) 0%,hsl(' + ((h + 40) % 360) + ',72%,34%) 100%)';
+  }
+
+  function currentStations() { return CATEGORIES[catIndex].stations; }
+  function onExitChip() { return topIndex >= CATEGORIES.length; }
+
+  function renderTop() {
+    chipsEl.innerHTML = '';
+    for (var i = 0; i < CATEGORIES.length; i++) {
+      var chip = document.createElement('div');
+      chip.className = 'chip' + (i === catIndex ? ' on' : '') + (zone === 'top' && i === topIndex ? ' focus' : '');
+      chip.textContent = CATEGORIES[i].name;
+      chipsEl.appendChild(chip);
+    }
+    exitChip.className = 'exit-chip' + (zone === 'top' && onExitChip() ? ' focus' : '');
+    subtitle.textContent = CATEGORIES[catIndex].name + ' · ' + CATEGORIES[catIndex].stations.length + ' станций';
+  }
+
+  function renderList() {
+    var stations = currentStations();
+    listEl.innerHTML = '';
+    stationEls = [];
+    for (var i = 0; i < stations.length; i++) {
+      var s = stations[i];
+      var li = document.createElement('li');
+      var avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = initials(s.name);
+      avatar.setAttribute('style', avatarStyle(s.name));
+      var info = document.createElement('div');
+      info.className = 'info';
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = s.name;
+      var tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.textContent = s.tag || '';
+      info.appendChild(name);
+      info.appendChild(tag);
+      var onair = document.createElement('div');
+      onair.className = 'onair';
+      onair.textContent = 'В ЭФИРЕ';
+      li.appendChild(avatar);
+      li.appendChild(info);
+      li.appendChild(onair);
+      listEl.appendChild(li);
+      stationEls.push(li);
+    }
+    refreshPlayingMark();
+  }
+
+  function recalcPositions() {
+    var items = listEl.querySelectorAll('li');
+    var padTop = parseFloat(getComputedStyle(track).paddingTop) || 0;
+    var padBottom = parseFloat(getComputedStyle(track).paddingBottom) || 0;
+    itemPositions = [];
+    var y = padTop;
+    for (var i = 0; i < items.length; i++) {
+      var h = items[i].offsetHeight;
+      var m = parseFloat(getComputedStyle(items[i]).marginBottom) || 0;
+      itemPositions.push({ top: y, height: h });
+      y += h + m;
+    }
+    trackHeight = y + padBottom;
+  }
+
+  function updateFocus() {
+    for (var i = 0; i < stationEls.length; i++) {
+      stationEls[i].classList.toggle('sel', zone === 'list' && i === stationIndex);
+    }
+    renderTop();
+    updateScrollbar();
+  }
+
+  function updateScrollbar() {
+    if (trackHeight <= viewportHeight || !itemPositions.length) {
+      thumb.style.display = 'none';
+      return;
+    }
+    thumb.style.display = 'block';
+    var thumbH = Math.max(30, viewportHeight * viewportHeight / trackHeight);
+    thumb.style.height = thumbH + 'px';
+    var item = itemPositions[stationIndex] || { top: 0, height: 0 };
+    var mid = item.top + item.height / 2;
+    var ratio = (mid - viewportHeight / 2) / (trackHeight - viewportHeight);
+    ratio = Math.max(0, Math.min(1, ratio));
+    thumb.style.top = (ratio * (viewportHeight - thumbH)) + 'px';
+  }
+
+  function layout() {
+    viewportHeight = viewport.clientHeight;
+    recalcPositions();
+    scrollTo(stationIndex, false);
+  }
+
+  function scrollTo(idx, animate) {
+    if (!itemPositions[idx]) { return; }
+    var item = itemPositions[idx];
+    var target = 0;
+    if (trackHeight > viewportHeight) {
+      target = item.top + item.height / 2 - viewportHeight / 2;
+      target = Math.max(0, Math.min(target, trackHeight - viewportHeight));
+    }
+    if (!animate) {
+      track.style.transition = 'none';
+      track.style.transform = 'translateY(-' + target + 'px)';
+      void track.offsetHeight;
+      track.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
+    } else {
+      track.style.transform = 'translateY(-' + target + 'px)';
+    }
+    updateScrollbar();
+  }
+
+  function renderAll() {
+    renderTop();
+    renderList();
+    layout();
+    updateFocus();
+    refreshNowPlaying();
+  }
+
+  function switchCategoryTo(ci) {
+    if (ci === catIndex) { renderTop(); return; }
+    lastPos[catIndex] = stationIndex;
+    catIndex = ci;
+    topIndex = ci;
+    stationIndex = Math.min(lastPos[catIndex] || 0, currentStations().length - 1);
+    renderAll();
+  }
+
+  function enterTopMenu() {
+    zone = 'top';
+    topIndex = CATEGORIES.length;
+    updateFocus();
+  }
+
+  function moveTop(dir) {
+    var next = topIndex + dir;
+    if (next < 0) { next = 0; }
+    if (next > CATEGORIES.length) { next = CATEGORIES.length; }
+    if (next === topIndex) { return; }
+    topIndex = next;
+    if (onExitChip() || topIndex === catIndex) {
+      renderTop();
+      return;
+    }
+    switchCategoryTo(topIndex);
+  }
+
+  function moveStation(dir) {
+    if (dir < 0 && stationIndex === 0) { enterTopMenu(); return; }
+    var next = stationIndex + dir;
+    if (next < 0) { next = 0; }
+    if (next > stationEls.length - 1) { next = stationEls.length - 1; }
+    if (next === stationIndex) { return; }
+    stationIndex = next;
+    lastPos[catIndex] = stationIndex;
+    updateFocus();
+    scrollTo(stationIndex, true);
+  }
+
+  function switchCategory(dir) {
+    var next = catIndex + dir;
+    if (next < 0 || next > CATEGORIES.length - 1) { enterTopMenu(); return; }
+    switchCategoryTo(next);
+  }
+
+  function setStrip(state, name, hint, cls) {
+    nowplaying.className = 'nowplaying show' + (cls ? ' ' + cls : '');
+    npState.textContent = state;
+    npName.textContent = name || '';
+    npHint.textContent = hint || '';
+  }
+
+  function refreshNowPlaying() {
+    if (cur.cat < 0) {
+      nowplaying.className = 'nowplaying';
+      return;
+    }
+    var name = CATEGORIES[cur.cat].stations[cur.idx].name;
+    if (isPlaying) { setStrip('В ЭФИРЕ', name, 'OK — стоп', 'live'); }
+    else if (audio.src) { setStrip('ПАУЗА', name, 'OK — слушать', ''); }
+  }
+
+  function refreshPlayingMark() {
+    for (var i = 0; i < stationEls.length; i++) {
+      stationEls[i].classList.toggle('playing', isPlaying && cur.cat === catIndex && cur.idx === i);
+    }
+  }
+
+  function startStream(ci, si) {
+    var s = CATEGORIES[ci].stations[si];
+    if (!s) { return; }
+    cur.cat = ci;
+    cur.idx = si;
+    setStrip('ПОДКЛЮЧЕНИЕ', s.name, '', '');
+    audio.src = s.url;
+    audio.load();
+    var p = audio.play();
+    if (p && p.catch) {
+      p.catch(function () {
+        setStrip('ОШИБКА', s.name, 'OK — повторить', 'bad');
+      });
+    }
+    refreshPlayingMark();
+  }
+
+  function stopStream() {
+    audio.pause();
+  }
+
+  function toggleStation() {
+    var s = currentStations()[stationIndex];
+    if (!s) { return; }
+    var same = (cur.cat === catIndex && cur.idx === stationIndex);
+    if (same && isPlaying) { stopStream(); return; }
+    if (same && audio.src && !isPlaying) {
+      setStrip('ПОДКЛЮЧЕНИЕ', s.name, '', '');
+      var p = audio.play();
+      if (p && p.catch) { p.catch(function () { setStrip('ОШИБКА', s.name, 'OK — повторить', 'bad'); }); }
+      return;
+    }
+    startStream(catIndex, stationIndex);
+  }
+
+  function activateTop() {
+    if (onExitChip()) { exitApp(); return; }
+    zone = 'list';
+    updateFocus();
+    scrollTo(stationIndex, true);
+  }
+
+  function exitApp() {
+    audio.pause();
+    audio.src = '';
+    if (history.length > 1) { history.back(); return; }
+    location.href = '../../index.html';
+  }
+
+  function onKeyDown(e) {
+    var code = e.keyCode || e.which;
+    if (isArrow(code) || isOk(code) || isBack(code)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isOk(code) && e.repeat) { return; }
+
+    if (zone === 'top') {
+      if (code === KEY_LEFT) { moveTop(-1); }
+      else if (code === KEY_RIGHT) { moveTop(1); }
+      else if (code === KEY_DOWN) { zone = 'list'; updateFocus(); scrollTo(stationIndex, true); }
+      else if (isOk(code)) { activateTop(); }
+      else if (isBack(code)) { exitApp(); }
+      return;
+    }
+
+    if (code === KEY_UP) { moveStation(-1); }
+    else if (code === KEY_DOWN) { moveStation(1); }
+    else if (code === KEY_LEFT) { switchCategory(-1); }
+    else if (code === KEY_RIGHT) { switchCategory(1); }
+    else if (isOk(code)) { toggleStation(); }
+    else if (isBack(code)) { exitApp(); }
+  }
+
+  function onKeyUp(e) {
+    var code = e.keyCode || e.which;
+    if (isArrow(code) || isOk(code) || isBack(code)) { e.preventDefault(); }
+  }
+
+  function onAudioEvent(type) {
+    var name = cur.cat >= 0 ? CATEGORIES[cur.cat].stations[cur.idx].name : '';
+    if (type === 'playing') {
+      isPlaying = true;
+      setStrip('В ЭФИРЕ', name, 'OK — стоп', 'live');
+      refreshPlayingMark();
+    } else if (type === 'pause') {
+      isPlaying = false;
+      setStrip('ПАУЗА', name, 'OK — слушать', '');
+      refreshPlayingMark();
+    } else if (type === 'waiting') {
+      setStrip('БУФЕРИЗАЦИЯ', name, '', '');
+    } else if (type === 'error') {
+      isPlaying = false;
+      setStrip('НЕДОСТУПНА', name, 'выберите другую', 'bad');
+      refreshPlayingMark();
+    }
+  }
+
+  audio.addEventListener('playing', function () { onAudioEvent('playing'); });
+  audio.addEventListener('pause', function () { onAudioEvent('pause'); });
+  audio.addEventListener('waiting', function () { onAudioEvent('waiting'); });
+  audio.addEventListener('error', function () { onAudioEvent('error'); });
+
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('keyup', onKeyUp, true);
+  window.addEventListener('resize', function () { layout(); });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
