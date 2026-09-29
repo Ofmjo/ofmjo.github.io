@@ -1,6 +1,6 @@
 {
   "name": "My Media Launcher",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "type": "pages",
   "headline": "Моя Медиатека",
   "background": "https://ofmjo.github.io/img/bg.jpg",
@@ -44,6 +44,18 @@
           "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
           "action": "cleaning"
+        },
+        {
+          "id": "app_gamesnacks",
+          "type": "default",
+          "layout": "0,3,4,3",
+          "color": "#1B4E2D",
+          "image": "https://cdn-icons-png.flaticon.com/512/808/808439.png",
+          "imageFiller": "cover",
+          "title": "Gamesnacks",
+          "titleFooter": "Мини-игры в браузере",
+          "_badge": "GAME",
+          "action": "link:https://gamesnacks.com/"
         }
       ]
     }
