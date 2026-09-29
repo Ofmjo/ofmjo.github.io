@@ -1,10 +1,11 @@
 {
-  "name": "Zona Launcher",
+  "name": "MSX Launcher",
   "version": "1.0.0",
-  "parameter": "content:https://ofmjo.github.io/msx/home.json",
+  "parameter": "content:{PREFIX}{SERVER}/msx/launcher.json",
   "welcome": "content",
   "launcher": {
-    "icon": "movie",
-    "color": "msx-red"
+    "icon": "rocket-launch",
+    "image": "none",
+    "color": "#101418"
   }
 }
