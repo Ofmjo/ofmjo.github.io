@@ -15,7 +15,6 @@
           "layout": "0,0,4,3",
           "color": "#2D1B4E",
           "image": "https://msx.zona.ms/assets/logo_512_512.png",
-          "imageRadius": 16,
           "imageFiller": "cover",
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
@@ -27,13 +26,12 @@
           "type": "default",
           "layout": "4,0,4,3",
           "color": "#4A1515",
-          "image": "https://hdrezka.me/templates/hdrezka/images/dwnapp_logo.png",
-          "imageRadius": 16,
-          "imageFiller": "cover",
+          "image": "https://hdrezka.ag/templates/hdrezka/images/dwnapp_logo.png",
+          "imageFiller": "fit",
           "title": "HDRezka",
           "titleFooter": "Фильмы и сериалы",
           "badge": "HD",
-          "action": "link:http://89.124.94.44:8080/msx/menu.json"
+          "action": "menu:http://89.124.94.44:8080/msx/menu.json"
         }
       ]
     }
