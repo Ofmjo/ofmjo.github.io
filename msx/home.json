@@ -1,0 +1,22 @@
+{
+  "name": "Zona Launcher",
+  "version": "1.0.0",
+  "type": "pages",
+  "headline": "ZONA",
+  "pages": [
+    {
+      "items": [
+        {
+          "id": "zona",
+          "type": "button",
+          "layout": "0,0,4,3",
+          "icon": "movie",
+          "iconSize": "large",
+          "label": "Zona",
+          "title": "m.zona.ms",
+          "action": "link:window:https://m.zona.ms"
+        }
+      ]
+    }
+  ]
+}

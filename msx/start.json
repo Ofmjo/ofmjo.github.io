@@ -1,0 +1,10 @@
+{
+  "name": "Zona Launcher",
+  "version": "1.0.0",
+  "parameter": "content:{PREFIX}{SERVER}/msx/home.json",
+  "welcome": "content",
+  "launcher": {
+    "icon": "movie",
+    "color": "msx-red"
+  }
+}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171918">
+  <title>Zona Launcher · MSX</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", sans-serif;
+      background: #171918;
+      color: #f4f5f2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background: radial-gradient(ellipse at 80% 12%, #49312d 0, transparent 38%), #171918;
+    }
+    main { width: min(100%, 680px); }
+    .eyebrow { color: #f05b42; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+    h1 { margin: 12px 0 8px; font-size: clamp(36px, 8vw, 64px); line-height: 1; }
+    p { color: #b8bcb7; line-height: 1.65; }
+    a { color: #f07a62; }
+    code {
+      display: block;
+      overflow-wrap: anywhere;
+      margin: 12px 0 22px;
+      padding: 14px 16px;
+      border-left: 3px solid #ed6048;
+      background: #242725;
+      color: #f4f5f2;
+      font: 14px/1.5 Consolas, monospace;
+    }
+    ol { padding-left: 22px; color: #d9dcd8; line-height: 1.8; }
+    .tile {
+      margin-top: 32px;
+      padding: 18px 20px;
+      border: 1px solid #414541;
+      background: linear-gradient(120deg, #2c302d, #202321);
+    }
+    .tile strong { display: block; font-size: 20px; }
+    .tile span { color: #aeb4ae; font-size: 14px; }
+    @media (prefers-reduced-motion: no-preference) {
+      main { animation: enter 500ms ease-out both; }
+      @keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">MEDIA STATION X</div>
+    <h1>Zona Launcher</h1>
+    <p>Локальная точка запуска MSX. Укажите адрес этого сервера в настройке стартового параметра Media Station X.</p>
+    <code id="server-address"></code>
+    <ol>
+      <li>Откройте Media Station X на телевизоре или устройстве в той же сети.</li>
+      <li>Перейдите в Settings → Start Parameter → Setup.</li>
+      <li>Укажите IP-адрес компьютера с Docker и порт 8080.</li>
+    </ol>
+    <div class="tile">
+      <strong>Zona</strong>
+      <span>m.zona.ms · плитка появится в MSX после настройки стартового параметра</span>
+    </div>
+    <p><a href="/msx/start.json">Открыть start.json</a></p>
+  </main>
+  <script>
+    document.getElementById("server-address").textContent = `${location.hostname}:8080`;
+  </script>
+</body>
+</html>
