@@ -33,7 +33,7 @@
           "title": "HDRezka",
           "titleFooter": "Фильмы и сериалы",
           "badge": "HD",
-          "action": "link:http://89.124.94.44:8080/msx/start.json"
+          "action": "link:http://89.124.94.44:8080/msx/menu.json"
         }
       ]
     }
