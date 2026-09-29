@@ -44,18 +44,6 @@
           "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
           "action": "cleaning"
-        },
-        {
-          "id": "app_poki",
-          "type": "default",
-          "layout": "0,3,4,3",
-          "color": "#1B4E2D",
-          "image": "https://cdn-icons-png.flaticon.com/512/808/808439.png",
-          "imageFiller": "cover",
-          "title": "Gamesnacks",
-          "titleFooter": "Мини-игры в браузере",
-          "_badge": "GAME",
-          "action": "link:https://poki.com"
         }
       ]
     }
