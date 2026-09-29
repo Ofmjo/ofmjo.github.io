@@ -1,6 +1,6 @@
 {
   "name": "My Media Launcher",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "type": "pages",
   "headline": "Моя Медиатека",
   "background": "https://ofmjo.github.io/img/bg.jpg",
@@ -36,7 +36,7 @@
         {
           "id": "app_games",
           "type": "default",
-          "layout": "0,3,4,3",
+          "layout": "8,0,4,3",
           "color": "#14304A",
           "image": "https://ofmjo.github.io/img/games.png",
           "imageFiller": "cover",
@@ -45,9 +45,18 @@
           "action": "link:https://ofmjo.github.io/msx/game/index.html"
         },
         {
+          "id": "app_radio",
+          "type": "default",
+          "layout": "0,3,4,3",
+          "color": "#2A1038",
+          "title": "Радио",
+          "titleFooter": "Русские и мировые станции",
+          "action": "link:https://ofmjo.github.io/msx/apps/radio/index.html"
+        },
+        {
           "id": "app_update",
           "type": "default",
-          "layout": "8,0,4,3",
+          "layout": "4,3,4,3",
           "color": "#dfdee0",
           "image": "https://ofmjo.github.io/img/update.png",
           "imageFiller": "cover",
