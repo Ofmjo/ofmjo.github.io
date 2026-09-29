@@ -18,7 +18,7 @@
           "imageFiller": "cover",
           "title": "Zona",
           "titleFooter": "Фильмы и сериалы",
-          "badge": "TOP",
+          "_badge": "TOP",
           "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         },
         {
@@ -27,10 +27,10 @@
           "layout": "4,0,4,3",
           "color": "#2D1B4E",
           "image": "https://ofmjo.github.io/img/hdrezka.jpg",
-          "imageFiller": "fit",
+          "imageFiller": "cover",
           "title": "HDRezka",
           "titleFooter": "Фильмы и сериалы",
-          "badge": "HD",
+          "_badge": "HD",
           "action": "menu:http://89.124.94.44:8080/msx/menu.json"
         }
       ]
