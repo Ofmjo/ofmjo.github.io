@@ -49,6 +49,8 @@
           "type": "default",
           "layout": "0,3,4,3",
           "color": "#2A1038",
+          "image": "https://ofmjo.github.io/img/radio.png",
+          "imageFiller": "cover",
           "title": "Радио",
           "titleFooter": "Русские и мировые станции",
           "action": "link:https://ofmjo.github.io/msx/apps/radio/index.html"
