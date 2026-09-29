@@ -34,6 +34,17 @@
           "action": "menu:http://89.124.94.44:8080/msx/menu.json"
         },
         {
+          "id": "app_games",
+          "type": "default",
+          "layout": "0,3,4,3",
+          "color": "#14304A",
+          "image": "https://ofmjo.github.io/img/games.png",
+          "imageFiller": "cover",
+          "title": "Игры",
+          "titleFooter": "Хаб с играми",
+          "action": "link:https://ofmjo.github.io/msx/game/index.html"
+        },
+        {
           "id": "app_update",
           "type": "default",
           "layout": "8,0,4,3",
@@ -44,17 +55,6 @@
           "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
           "action": "cleaning"
-        },
-        {
-          "id": "app_games",
-          "type": "default",
-          "layout": "0,3,4,3",
-          "color": "#14304A",
-          "image": "https://ofmjo.github.io/img/games.png",
-          "imageFiller": "cover",
-          "title": "Игры",
-          "titleFooter": "Хаб с играми",
-          "action": "link:https://ofmjo.github.io/msx/game/index.html"
         }
       ]
     }
