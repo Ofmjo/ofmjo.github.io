@@ -1,6 +1,6 @@
 {
   "name": "Zona Launcher",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "pages",
   "headline": "Zona",
   "background": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1920&auto=format&fit=crop",
@@ -12,7 +12,7 @@
         {
           "id": "app_zona",
           "type": "default",
-          "layout": "4,0,4,3",
+          "layout": "0,0,4,3",
           "color": "#2D1B4E",
           "image": "https://msx.zona.ms/assets/logo_512_512.png",
           "imageRadius": 16,
