@@ -37,7 +37,7 @@
           "id": "app_update",
           "type": "default",
           "layout": "8,0,4,3",
-          "color": "#2D1B4E",
+          "color": "#dfdee0",
           "image": "https://ofmjo.github.io/img/update.png",
           "imageFiller": "cover",
           "title": "Перезагрузка",
