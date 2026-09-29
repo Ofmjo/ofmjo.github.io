@@ -2,7 +2,7 @@
   "name": "Zona Launcher",
   "version": "1.0.0",
   "type": "pages",
-  "headline": "ZONA",
+  "headline": "Домашний экран",
   "pages": [
     {
       "items": [
@@ -13,7 +13,7 @@
           "icon": "movie",
           "iconSize": "large",
           "label": "Zona",
-          "title": "m.zona.ms",
+          "title": "Zona",
           "action": "link:https://m.zona.ms"
         }
       ]
