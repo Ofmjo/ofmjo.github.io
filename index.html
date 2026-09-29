@@ -1,252 +1,158 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111512">
-  <meta name="description" content="Zona Launcher для Media Station X. Запуск m.zona.ms и параметры подключения.">
-  <title>Zona | MSX Launcher</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --ink: #111512;
-      --panel: #1b211d;
-      --paper: #f0f1e9;
-      --muted: #a6ada5;
-      --line: #39413a;
-      --acid: #d6f26a;
-      --red: #fa5b43;
-      --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-      --sans: "Trebuchet MS", "Segoe UI", sans-serif;
-      --mono: Consolas, "Courier New", monospace;
-      font-family: var(--sans);
-      color: var(--paper);
-      background: var(--ink);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; background: var(--ink); }
-    a { color: inherit; }
-    .shell { width: min(1160px, calc(100% - 64px)); margin-inline: auto; }
-    .topbar {
-      height: 76px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--line);
-    }
-    .wordmark { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-    .mark {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      color: var(--ink);
-      background: var(--acid);
-      font: 700 19px/1 var(--serif);
-    }
-    .wordmark span { font: 700 13px/1 var(--mono); letter-spacing: 1px; }
-    .top-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font: 11px/1 var(--mono); text-transform: uppercase; }
-    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 12px #d6f26a66; }
-    main { padding-bottom: 68px; }
-    .hero {
-      position: relative;
-      min-height: 440px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      overflow: hidden;
-      padding: 62px 0 56px;
-      border-bottom: 1px solid var(--line);
-      isolation: isolate;
-    }
-    .hero::before {
-      position: absolute;
-      z-index: -1;
-      inset: 0 -32px 0 46%;
-      content: "";
-      opacity: .72;
-      background:
-        repeating-linear-gradient(135deg, transparent 0 21px, #d6f26a0b 21px 22px),
-        linear-gradient(90deg, var(--ink) 0%, #11151220 48%, #fa5b4318 100%);
-      clip-path: polygon(21% 0, 100% 0, 100% 100%, 0 100%);
-    }
-    .hero::after {
-      position: absolute;
-      z-index: -1;
-      right: 5%;
-      top: 50%;
-      width: 300px;
-      content: "Z";
-      transform: translateY(-55%) rotate(-8deg);
-      color: #d6f26a0b;
-      font: 700 390px/.8 var(--serif);
-      pointer-events: none;
-    }
-    .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--acid); font: 11px/1.4 var(--mono); letter-spacing: 1.3px; text-transform: uppercase; }
-    .eyebrow::before { width: 24px; height: 1px; content: ""; background: var(--acid); }
-    h1 { max-width: 740px; margin: 22px 0 12px; font: 400 88px/.92 var(--serif); letter-spacing: 0; }
-    h1 span { color: var(--red); font-style: italic; }
-    .intro { max-width: 510px; margin: 12px 0 28px; color: #c2c7c0; font-size: 17px; line-height: 1.65; }
-    .primary-action {
-      min-height: 54px;
-      width: fit-content;
-      display: inline-flex;
-      align-items: center;
-      gap: 28px;
-      padding: 0 18px;
-      color: var(--ink);
-      background: var(--acid);
-      font-size: 14px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: background 160ms ease, transform 160ms ease;
-    }
-    .primary-action:hover { background: #e3ff8c; transform: translateY(-2px); }
-    .primary-action span { font: 20px/1 var(--mono); }
-    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 34px 0 17px; }
-    .section-head h2 { margin: 0; font: 400 27px/1.1 var(--serif); }
-    .section-head span { color: var(--muted); font: 11px/1 var(--mono); text-transform: uppercase; }
-    .app-row {
-      min-height: 128px;
-      display: grid;
-      grid-template-columns: 76px minmax(0, 1fr) auto 28px;
-      align-items: center;
-      gap: 22px;
-      padding: 18px 22px;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      background: var(--panel);
-      text-decoration: none;
-      transition: background 160ms ease;
-    }
-    .app-row:hover { background: #242c26; }
-    .app-glyph {
-      width: 76px;
-      aspect-ratio: 1;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      border: 1px solid #fa5b4370;
-      background: #2c211e;
-      color: var(--red);
-      font: italic 700 40px/1 var(--serif);
-    }
-    .app-copy small { display: block; margin-bottom: 7px; color: var(--acid); font: 10px/1 var(--mono); letter-spacing: 1px; text-transform: uppercase; }
-    .app-copy strong { display: block; font: 400 26px/1.1 var(--serif); }
-    .app-copy span { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
-    .app-domain { color: var(--muted); font: 12px/1 var(--mono); }
-    .app-arrow { color: var(--acid); font: 22px/1 var(--mono); }
-    .setup {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      margin-top: 46px;
-      padding: 22px 0;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-    }
-    .setup-copy small { display: block; margin-bottom: 8px; color: var(--muted); font: 10px/1 var(--mono); letter-spacing: 1px; text-transform: uppercase; }
-    .setup-copy strong { font: 400 20px/1.3 var(--serif); }
-    .server-control { display: flex; align-items: center; gap: 12px; }
-    .server-control code { color: var(--acid); font: 13px/1.4 var(--mono); }
-    .copy-button {
-      min-height: 38px;
-      padding: 0 12px;
-      border: 1px solid #59635a;
-      color: var(--paper);
-      background: transparent;
-      font: 11px/1 var(--mono);
-      cursor: pointer;
-      transition: border-color 160ms ease, color 160ms ease;
-    }
-    .copy-button:hover { border-color: var(--acid); color: var(--acid); }
-    footer { display: flex; justify-content: space-between; gap: 16px; padding-top: 22px; color: var(--muted); font: 10px/1.5 var(--mono); text-transform: uppercase; }
-    footer a { text-decoration-color: #737d74; text-underline-offset: 3px; }
-    @media (max-width: 700px) {
-      .shell { width: calc(100% - 36px); }
-      .topbar { height: 64px; }
-      .top-meta { font-size: 9px; }
-      .hero { min-height: 390px; padding: 48px 0 42px; }
-      .hero::before { inset-left: 20%; opacity: .48; }
-      .hero::after { right: -26px; font-size: 280px; }
-      h1 { font-size: 64px; }
-      .intro { max-width: 390px; font-size: 15px; }
-      .app-row { grid-template-columns: 58px minmax(0,1fr) 24px; gap: 14px; min-height: 100px; padding: 14px; }
-      .app-glyph { width: 58px; font-size: 32px; }
-      .app-copy strong { font-size: 22px; }
-      .app-domain { display: none; }
-      .setup { align-items: flex-start; flex-direction: column; gap: 16px; margin-top: 34px; }
-      footer { flex-direction: column; }
-    }
-    @media (prefers-reduced-motion: no-preference) {
-      .hero > * { animation: enter 520ms ease-out both; }
-      .hero > :nth-child(2) { animation-delay: 60ms; }
-      .hero > :nth-child(3) { animation-delay: 110ms; }
-      .hero > :nth-child(4) { animation-delay: 160ms; }
-      @keyframes enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MSX Launcher</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.55;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 36px 0 10px; color: #9fb3c8; text-transform: uppercase; letter-spacing: .06em; }
+  p { color: #c9d4e0; }
+  .sub { color: #8b98a5; margin-top: 0; }
+  a { color: #58a6ff; }
+  .card {
+    background: #161b22;
+    border: 1px solid #262d36;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  ol, ul { padding-left: 20px; }
+  code, .mono {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: #0b0f14;
+    border: 1px solid #262d36;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: .92em;
+    word-break: break-all;
+  }
+  .copy-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+  .copy-row .mono { flex: 1 1 260px; padding: 10px 12px; }
+  button, .btn {
+    cursor: pointer;
+    border: 1px solid #2f81f7;
+    background: #1f6feb;
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: .95rem;
+    text-decoration: none;
+    display: inline-block;
+  }
+  button.ghost { background: transparent; color: #58a6ff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .app { display: flex; gap: 10px; align-items: center; background: #12171e; border: 1px solid #232a33; border-radius: 10px; padding: 10px 12px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
+  .app b { display: block; font-size: .95rem; }
+  .app small { color: #8b98a5; }
+  .warn { display: none; }
+  .warn.show { display: block; border-color: #8a6d00; background: #241f07; }
+</style>
 </head>
 <body>
-  <header class="topbar shell">
-    <a class="wordmark" href="/" aria-label="Zona Launcher, главная">
-      <span class="mark" aria-hidden="true">Z</span>
-      <span>MSX / LAUNCHER</span>
-    </a>
-    <div class="top-meta"><span class="live-dot" aria-hidden="true"></span> 01 приложение</div>
-  </header>
-  <main class="shell">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="eyebrow">Ваш вечер начинается здесь</div>
-      <h1 id="hero-title">Кино ближе.<br><span>Zona.</span></h1>
-      <p class="intro">Один выбор на пульте — и вы уже в каталоге фильмов и сериалов.</p>
-      <a class="primary-action" href="https://m.zona.ms" target="_blank" rel="noopener noreferrer">
-        Открыть Zona <span aria-hidden="true">↗</span>
-      </a>
-    </section>
-    <section aria-labelledby="apps-title">
-      <div class="section-head">
-        <h2 id="apps-title">Приложения</h2>
-        <span>Каталог / 01</span>
-      </div>
-      <a class="app-row" href="https://m.zona.ms" target="_blank" rel="noopener noreferrer">
-        <span class="app-glyph" aria-hidden="true">Z</span>
-        <span class="app-copy">
-          <small>Кино · сериалы</small>
-          <strong>Zona</strong>
-          <span>Открыть m.zona.ms</span>
-        </span>
-        <span class="app-domain">M.ZONA.MS</span>
-        <span class="app-arrow" aria-hidden="true">↗</span>
-      </a>
-    </section>
-    <section class="setup" aria-label="Настройка Media Station X">
-      <div class="setup-copy">
-        <small>Подключение Media Station X</small>
-        <strong>Введите адрес сервера в Start Parameter</strong>
-      </div>
-      <div class="server-control">
-        <code id="server-address">ofmjo.github.io</code>
-        <button class="copy-button" id="copy-server" type="button">Копировать</button>
-      </div>
-    </section>
-  </main>
-  <footer class="shell">
-    <span>Zona Launcher <span aria-hidden="true">/</span> Media Station X</span>
-    <a href="/msx/start.json">MSX start object</a>
-  </footer>
-  <script>
-    const copyButton = document.getElementById("copy-server");
-    copyButton.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(document.getElementById("server-address").textContent);
-        copyButton.textContent = "Скопировано";
-        window.setTimeout(() => { copyButton.textContent = "Копировать"; }, 1600);
-      } catch {
-        copyButton.textContent = "ofmjo.github.io";
-      }
+<main>
+  <h1>MSX Launcher</h1>
+  <p class="sub">Стартовая страница (лаунчер) для Media Station X с быстрым доступом к приложениям.</p>
+
+  <div id="warn" class="card warn">
+    Страница открыта не по HTTP(S). Для запуска нужен веб-адрес: разместите папку проекта на любом статическом хостинге
+    (GitHub Pages, Netlify, локальный веб-сервер) и откройте страницу оттуда.
+  </div>
+
+  <h2>Запустить в браузере</h2>
+  <div class="card">
+    <p>Откройте лаунчер прямо в веб-версии Media Station X:</p>
+    <p><a id="launchLink" class="btn" href="#">Запустить MSX Launcher</a></p>
+  </div>
+
+  <h2>Установка на телевизор</h2>
+  <div class="card">
+    <ol>
+      <li>Разместите проект на статическом хостинге так, чтобы файл <code>msx/start.json</code> был доступен по адресу <code>&lt;адрес&gt;/msx/start.json</code>.</li>
+      <li>Запустите приложение <b>Media Station X</b>.</li>
+      <li>Перейдите в <b>Settings → Start Parameter → Setup</b>.</li>
+      <li>Включите «замок» (HTTPS) и введите адрес сервера:</li>
+    </ol>
+    <div class="copy-row">
+      <span id="serverString" class="mono">—</span>
+      <button id="copyServer">Скопировать</button>
+    </div>
+    <p class="sub">После сохранения лаунчер будет загружаться при каждом запуске приложения.</p>
+  </div>
+
+  <h2>Приложения</h2>
+  <div class="card">
+    <div class="grid">
+      <div class="app"><span class="dot" style="background:#19394f"></span><span><b>Zona</b><small>Фильмы и сериалы</small></span></div>
+      <div class="app"><span class="dot" style="background:#ff5500"></span><span><b>SoundCloud</b><small>Музыка и подкасты</small></span></div>
+      <div class="app"><span class="dot" style="background:#1a73e8"></span><span><b>Google Drive</b><small>Облачное хранилище</small></span></div>
+      <div class="app"><span class="dot" style="background:#094ab1"></span><span><b>OneDrive</b><small>Облачное хранилище</small></span></div>
+      <div class="app"><span class="dot" style="background:#0061fe"></span><span><b>Dropbox</b><small>Облачное хранилище</small></span></div>
+      <div class="app"><span class="dot" style="background:#417e38"></span><span><b>Node Browser</b><small>Локальный сервер</small></span></div>
+      <div class="app"><span class="dot" style="background:#8c45f7"></span><span><b>Launcher MSX</b><small>Каталог приложений</small></span></div>
+      <div class="app"><span class="dot" style="background:#455a64"></span><span><b>Настройки MSX</b><small>Параметры приложения</small></span></div>
+    </div>
+  </div>
+
+  <h2>Своё приложение</h2>
+  <div class="card">
+    <p>Откройте <code>msx/launcher.json</code> и добавьте элемент в массив <code>items</code>. Запуск MSX-приложения выполняется действием <code>start</code>:</p>
+<pre class="mono" style="padding:12px;overflow:auto">{
+  "id": "my_app",
+  "icon": "msx-white:play-circle",
+  "color": "#1f6feb",
+  "title": "Моё приложение",
+  "titleFooter": "Описание",
+  "action": "start",
+  "data": {
+    "name": "Моё приложение",
+    "version": "1.0.0",
+    "parameter": "menu:https://site.example/msx/menu.json"
+  }
+}</pre>
+    <p class="sub">В <code>data.parameter</code> указывается стартовый параметр приложения: <code>menu:&lt;URL&gt;</code>, <code>content:&lt;URL&gt;</code> или <code>redirect:&lt;URL&gt;/msx/start.json</code>.</p>
+  </div>
+
+  <p class="sub">Документация Media Station X: <a href="https://msx.benzac.de/wiki/index.php?title=Welcome">msx.benzac.de/wiki</a></p>
+</main>
+
+<script>
+  (function () {
+    var here = location.href.split(/[?#]/)[0].replace(/index\.html$/, '');
+    var launcherUrl = here + 'msx/launcher.json';
+    var isWeb = location.protocol === 'http:' || location.protocol === 'https:';
+
+    var launchLink = document.getElementById('launchLink');
+    launchLink.href = 'https://msx.benzac.de/?start=content:' + encodeURI(launcherUrl);
+
+    var serverString = document.getElementById('serverString');
+    if (isWeb) {
+      serverString.textContent = location.host + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+    } else {
+      document.getElementById('warn').classList.add('show');
+    }
+
+    document.getElementById('copyServer').addEventListener('click', function () {
+      var text = serverString.textContent;
+      if (!text || text === '—') { return; }
+      navigator.clipboard.writeText(text).then(function () {
+        var b = document.getElementById('copyServer');
+        b.textContent = 'Скопировано';
+        setTimeout(function () { b.textContent = 'Скопировать'; }, 1500);
+      });
     });
-  </script>
+  })();
+</script>
 </body>
 </html>
