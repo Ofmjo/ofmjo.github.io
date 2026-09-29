@@ -32,6 +32,18 @@
           "titleFooter": "Фильмы и сериалы",
           "_badge": "HD",
           "action": "menu:http://89.124.94.44:8080/msx/menu.json"
+        },
+        {
+          "id": "app_update",
+          "type": "default",
+          "layout": "8,0,4,3",
+          "color": "#1B4E2D",
+          "image": "https://cdn-icons-png.flaticon.com/512/2921/2921226.png",
+          "imageFiller": "cover",
+          "title": "Обновить",
+          "titleFooter": "Очистить кэш и перезагрузить",
+          "_badge": "NEW",
+          "action": "cleaning"
         }
       ]
     }
