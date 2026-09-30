@@ -162,7 +162,7 @@
     <div class="brand">MSX Games</div>
     <div class="menu-head">
       <h1>Змейка</h1>
-      <p class="sub">Выберите скорость</p>
+      <p class="sub">Нажмите OK, чтобы начать</p>
     </div>
     <nav id="menuList" class="menu-list"></nav>
     <div style="flex:1"></div>
@@ -177,7 +177,7 @@
     <div class="hud">
       <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
       <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
-      <div class="hud-item"><span class="hud-label">Скорость</span><b id="hudSpeed">—</b></div>
+      <div class="hud-item"><span class="hud-label">Темп</span><b id="hudSpeed">—</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><div id="board" class="board"></div></div>
     <div class="hint-bar">
@@ -198,18 +198,25 @@
 
 <script>
 (function () {
-  var LEVELS = [
-    { name: 'Медленно', speed: 175 },
-    { name: 'Нормально', speed: 118 },
-    { name: 'Быстро', speed: 78 }
-  ];
+  var LEVELS = [{ name: 'Обычный', speed: 118 }];
   var COLS = 18;
   var ROWS = 11;
   var OK_CODES = [13, 32];
-  var BACK_CODES = [8, 27, 166, 461, 10009];
+  var BACK_CODES = [4, 8, 27, 166, 461, 10009];
 
   function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
   function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
+  function normalizeKey(e) {
+    var key = e.key || e.code;
+    var code = e.keyCode || e.which;
+    if (code === 23 || code === 66 || key === 'Enter' || key === 'Select') { return 13; }
+    if (key === ' ' || key === 'Spacebar') { return 32; }
+    if (code === 19 || key === 'ArrowUp' || key === 'Up') { return 38; }
+    if (code === 20 || key === 'ArrowDown' || key === 'Down') { return 40; }
+    if (code === 21 || key === 'ArrowLeft' || key === 'Left') { return 37; }
+    if (code === 22 || key === 'ArrowRight' || key === 'Right') { return 39; }
+    return code;
+  }
 
   var screenMenu = document.getElementById('screen-menu');
   var screenGame = document.getElementById('screen-game');
@@ -232,9 +239,9 @@
   var nextDir = { r: 0, c: 1 };
   var score = 0;
   var best = 0;
-  var levelIndex = 1;
-  var menuIndex = 1;
-  var MENU_LEN = LEVELS.length + 1;
+  var levelIndex = 0;
+  var menuIndex = 0;
+  var MENU_LEN = 2;
   var timer = null;
   var running = false;
   var finished = false;
@@ -248,9 +255,7 @@
 
   function buildMenu() {
     menuList.innerHTML = '';
-    for (var i = 0; i < LEVELS.length; i++) {
-      menuList.appendChild(buildMenuItem(LEVELS[i].name, LEVELS[i].speed + ' мс'));
-    }
+    menuList.appendChild(buildMenuItem('Играть', null));
     menuList.appendChild(buildMenuItem('Выход', null));
     selectMenu(menuIndex);
   }
@@ -272,11 +277,8 @@
   }
 
   function activateMenu() {
-    if (menuIndex < LEVELS.length) {
-      startLevel(menuIndex);
-    } else {
-      exitApp();
-    }
+    if (menuIndex === 0) { startLevel(0); }
+    else { exitApp(); }
   }
 
   function exitApp() {
@@ -486,7 +488,6 @@
     var items = [
       { label: 'Продолжить', run: resume },
       { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Скорости', run: goMenu },
       { label: 'Выход', run: exitApp }
     ];
     if (type === 'lose') {
@@ -494,7 +495,6 @@
       text = (reason || '') + ' Счёт: ' + score + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Скорости', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     } else if (type === 'win') {
@@ -502,7 +502,6 @@
       text = 'Поле заполнено! Счёт: ' + score + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Скорости', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     }
@@ -525,14 +524,6 @@
     if (!finished) { startLoop(); }
   }
 
-  function goMenu() {
-    stopLoop();
-    closeOverlay();
-    setScreen('menu');
-    menuIndex = levelIndex;
-    selectMenu(menuIndex);
-  }
-
   function moveOverlay(d) {
     var n = ovItems.length;
     if (!n) { return; }
@@ -551,7 +542,7 @@
   }
 
   function onKeyDown(e) {
-    var k = e.keyCode || e.which;
+    var k = normalizeKey(e);
     if ((k >= 37 && k <= 40) || isOk(k) || isBack(k)) { e.preventDefault(); }
     if (e.repeat && isOk(k)) { return; }
 

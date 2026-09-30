@@ -200,7 +200,7 @@
     <div class="brand">MSX Games</div>
     <div class="menu-head">
       <h1>Сапёр</h1>
-      <p class="sub">Выберите уровень сложности</p>
+      <p class="sub">Нажмите OK, чтобы начать</p>
     </div>
     <nav id="menuList" class="menu-list"></nav>
     <div style="flex:1"></div>
@@ -215,7 +215,6 @@
     <div class="hud">
       <div class="hud-item"><span class="hud-label">Мины</span><b id="hudMines">0</b></div>
       <div class="hud-item"><span class="hud-label">Время</span><b id="hudTime">0:00</b></div>
-      <div class="hud-item"><span class="hud-label">Уровень</span><b id="hudLevel">—</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><div id="board" class="board"></div></div>
     <div class="hint-bar">
@@ -238,13 +237,9 @@
 
 <script>
 (function () {
-  var LEVELS = [
-    { name: 'Новичок',   cols: 9,  rows: 9,  mines: 10 },
-    { name: 'Любитель',  cols: 12, rows: 12, mines: 25 },
-    { name: 'Профессор', cols: 16, rows: 16, mines: 50 }
-  ];
+  var LEVELS = [{ name: 'Обычный', cols: 12, rows: 12, mines: 25 }];
   var NUM_CLASS = ['', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8'];
-  var MENU_LEN = LEVELS.length + 1;
+  var MENU_LEN = 2;
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
   var HOLD_MS = 420;
@@ -258,7 +253,6 @@
   var boardWrap = el('boardWrap');
   var hudMines = el('hudMines');
   var hudTime = el('hudTime');
-  var hudLevel = el('hudLevel');
   var overlay = el('overlay');
   var ovTitle = el('ovTitle');
   var ovText = el('ovText');
@@ -322,10 +316,7 @@
 
   function buildMenu() {
     menuList.innerHTML = '';
-    for (var i = 0; i < LEVELS.length; i++) {
-      var lv = LEVELS[i];
-      menuList.appendChild(buildItem(lv.name, lv.cols + '×' + lv.rows + ' · ' + lv.mines + ' мин'));
-    }
+    menuList.appendChild(buildItem('Играть', null));
     menuList.appendChild(buildItem('Выход', null));
     updateSel(menuList, state.menuIndex);
   }
@@ -493,7 +484,6 @@
     state.flags = 0;
     state.revealed = 0;
     state.time = 0;
-    hudLevel.textContent = lv.name;
     updateHud();
     setScreen('game');
     buildBoard();
@@ -638,7 +628,6 @@
       items = [
         { label: 'Продолжить', run: resumeGame },
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     } else if (type === 'win') {
@@ -646,7 +635,6 @@
       text = 'Поле очищено за ' + fmtTime(state.time) + '.';
       items = [
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     } else {
@@ -654,7 +642,6 @@
       text = 'Вы наткнулись на мину.';
       items = [
         { label: 'Новая игра', run: function () { newGame(state.level); } },
-        { label: 'Уровни', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     }
@@ -690,11 +677,8 @@
   }
 
   function activateMenu() {
-    if (state.menuIndex < LEVELS.length) {
-      newGame(state.menuIndex);
-    } else {
-      exitApp();
-    }
+    if (state.menuIndex === 0) { newGame(0); }
+    else { exitApp(); }
   }
 
   function moveOverlay(d) {

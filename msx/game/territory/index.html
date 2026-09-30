@@ -104,7 +104,6 @@
       <div class="hud-item"><span class="hud-label">Владение</span><b id="hudLand">0%</b></div>
       <div class="hud-item"><span class="hud-label">Соперники</span><b id="hudBots">0</b></div>
       <div class="hud-item"><span class="hud-label">Захвачено</span><b id="hudScore">0</b></div>
-      <div class="hud-item"><span class="hud-label">Режим</span><b id="hudLevel">—</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
     <div class="hint-bar">
@@ -125,11 +124,7 @@
 
 <script>
 (function () {
-  var LEVELS = [
-    { name: 'Спокойно', bots: 3 },
-    { name: 'Обычно',   bots: 5 },
-    { name: 'Толпа',    bots: 8 }
-  ];
+  var LEVELS = [{ name: 'Обычно', bots: 5 }];
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
 
@@ -153,7 +148,6 @@
   var hudLand = document.getElementById('hudLand');
   var hudBots = document.getElementById('hudBots');
   var hudScore = document.getElementById('hudScore');
-  var hudLevel = document.getElementById('hudLevel');
   var overlay = document.getElementById('overlay');
   var ovTitle = document.getElementById('ovTitle');
   var ovText = document.getElementById('ovText');
@@ -161,9 +155,9 @@
 
   var screen = 'menu';
   var state = 'menu';
-  var levelIndex = 1;
-  var menuIndex = 1;
-  var MENU_LEN = LEVELS.length + 1;
+  var levelIndex = 0;
+  var menuIndex = 0;
+  var MENU_LEN = 2;
 
   var k = 1;
   var viewW = 900;
@@ -219,9 +213,7 @@
 
   function buildMenu() {
     menuList.innerHTML = '';
-    for (var i = 0; i < LEVELS.length; i++) {
-      menuList.appendChild(buildMenuItem(LEVELS[i].name, 'соперников ' + LEVELS[i].bots));
-    }
+    menuList.appendChild(buildMenuItem('Играть', null));
     menuList.appendChild(buildMenuItem('Выход', null));
     selectMenu(menuIndex);
   }
@@ -246,7 +238,6 @@
   }
 
   function updateHud() {
-    hudLevel.textContent = cfg().name;
     hudScore.textContent = landGained;
     if (!owner) {
       hudLand.textContent = '0%';
@@ -713,7 +704,6 @@
     var items = [
       { label: 'Продолжить', run: resume },
       { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Режимы', run: goMenu },
       { label: 'Выход', run: exitApp }
     ];
     if (type === 'lose') {
@@ -721,7 +711,6 @@
       text = (reason || '') + ' Земля: ' + Math.round(landShare(1) * 100) + '%.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Режимы', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     } else if (type === 'win') {
@@ -729,7 +718,6 @@
       text = 'Вы забрали ' + Math.round(landShare(1) * 100) + '% карты. Захвачено зон: ' + landGained + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Режимы', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     }
@@ -752,17 +740,8 @@
     if (state === 'playing') { startLoop(); }
   }
 
-  function goMenu() {
-    stopLoop();
-    closeOverlay();
-    state = 'menu';
-    setScreen('menu');
-    menuIndex = levelIndex;
-    selectMenu(menuIndex);
-  }
-
   function activateMenu() {
-    if (menuIndex < LEVELS.length) { startLevel(menuIndex); }
+    if (menuIndex === 0) { startLevel(0); }
     else { exitApp(); }
   }
 

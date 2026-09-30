@@ -133,11 +133,7 @@
 
 <script>
 (function () {
-  var LEVELS = [
-    { name: 'Мелководье', spawn: 1.15, pop: 9,  threat: 0.16 },
-    { name: 'Обычная',    spawn: 0.85, pop: 12, threat: 0.26 },
-    { name: 'Бездна',     spawn: 0.6,  pop: 15, threat: 0.36 }
-  ];
+  var LEVELS = [{ name: 'Обычная', spawn: 0.85, pop: 12, threat: 0.26 }];
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
 
@@ -169,9 +165,9 @@
 
   var screen = 'menu';
   var state = 'menu';
-  var levelIndex = 1;
-  var menuIndex = 1;
-  var MENU_LEN = LEVELS.length + 1;
+  var levelIndex = 0;
+  var menuIndex = 0;
+  var MENU_LEN = 2;
 
   var k = 1;
   var worldW = 900;
@@ -226,9 +222,7 @@
 
   function buildMenu() {
     menuList.innerHTML = '';
-    for (var i = 0; i < LEVELS.length; i++) {
-      menuList.appendChild(buildMenuItem(LEVELS[i].name, 'рыб ' + LEVELS[i].pop));
-    }
+    menuList.appendChild(buildMenuItem('Играть', null));
     menuList.appendChild(buildMenuItem('Выход', null));
     selectMenu(menuIndex);
   }
@@ -668,7 +662,6 @@
     var items = [
       { label: 'Продолжить', run: resume },
       { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Уровни', run: goMenu },
       { label: 'Выход', run: exitApp }
     ];
     if (type === 'lose') {
@@ -676,7 +669,6 @@
       text = (reason || '') + ' Счёт: ' + score + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Уровни', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     } else if (type === 'win') {
@@ -684,7 +676,6 @@
       text = 'Вы выросли до максимума! Счёт: ' + score + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Уровни', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     }
@@ -707,17 +698,8 @@
     if (state === 'playing') { startLoop(); }
   }
 
-  function goMenu() {
-    stopLoop();
-    closeOverlay();
-    state = 'menu';
-    setScreen('menu');
-    menuIndex = levelIndex;
-    selectMenu(menuIndex);
-  }
-
   function activateMenu() {
-    if (menuIndex < LEVELS.length) { startLevel(menuIndex); }
+    if (menuIndex === 0) { startLevel(0); }
     else { exitApp(); }
   }
 

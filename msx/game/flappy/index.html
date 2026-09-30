@@ -150,7 +150,7 @@
     <div class="brand">MSX Games</div>
     <div class="menu-head">
       <h1>Flappy</h1>
-      <p class="sub">Выберите сложность</p>
+      <p class="sub">Нажмите OK, чтобы начать</p>
     </div>
     <nav id="menuList" class="menu-list"></nav>
     <div style="flex:1"></div>
@@ -165,7 +165,7 @@
     <div class="hud">
       <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
       <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
-      <div class="hud-item"><span class="hud-label">Сложность</span><b id="hudLevel">—</b></div>
+      <div class="hud-item"><span class="hud-label">Зазор</span><b id="hudGap">—</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
     <div class="hint-bar">
@@ -185,11 +185,7 @@
 
 <script>
 (function () {
-  var LEVELS = [
-    { name: 'Широкие', gap: 225, speed: 175, spawn: 1.6 },
-    { name: 'Обычно', gap: 188, speed: 220, spawn: 1.42 },
-    { name: 'Узко', gap: 156, speed: 268, spawn: 1.3 }
-  ];
+  var LEVELS = [{ name: 'Обычно', gap: 188, speed: 220, spawn: 1.42 }];
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
 
@@ -212,7 +208,7 @@
   var ctx = canvas.getContext('2d');
   var hudScore = document.getElementById('hudScore');
   var hudBest = document.getElementById('hudBest');
-  var hudLevel = document.getElementById('hudLevel');
+  var hudGap = document.getElementById('hudGap');
   var overlay = document.getElementById('overlay');
   var ovTitle = document.getElementById('ovTitle');
   var ovText = document.getElementById('ovText');
@@ -220,9 +216,9 @@
 
   var screen = 'menu';
   var state = 'menu';
-  var levelIndex = 1;
-  var menuIndex = 1;
-  var MENU_LEN = LEVELS.length + 1;
+  var levelIndex = 0;
+  var menuIndex = 0;
+  var MENU_LEN = 2;
 
   var k = 1;
   var worldW = 800;
@@ -266,9 +262,7 @@
 
   function buildMenu() {
     menuList.innerHTML = '';
-    for (var i = 0; i < LEVELS.length; i++) {
-      menuList.appendChild(buildMenuItem(LEVELS[i].name, 'зазор ' + LEVELS[i].gap));
-    }
+    menuList.appendChild(buildMenuItem('Играть', null));
     menuList.appendChild(buildMenuItem('Выход', null));
     selectMenu(menuIndex);
   }
@@ -292,7 +286,7 @@
       try { localStorage.setItem('msxflappybest', String(best)); } catch (err) {}
     }
     hudBest.textContent = best;
-    hudLevel.textContent = LEVELS[levelIndex].name;
+    hudGap.textContent = LEVELS[levelIndex].gap + ' px';
   }
 
   function resize() {
@@ -560,7 +554,6 @@
     var items = [
       { label: 'Продолжить', run: resume },
       { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Сложности', run: goMenu },
       { label: 'Выход', run: exitApp }
     ];
     if (type === 'lose') {
@@ -568,7 +561,6 @@
       text = (reason || '') + ' Счёт: ' + score + '.';
       items = [
         { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Сложности', run: goMenu },
         { label: 'Выход', run: exitApp }
       ];
     }
@@ -591,21 +583,9 @@
     if (state === 'ready' || state === 'playing') { startLoop(); }
   }
 
-  function goMenu() {
-    stopLoop();
-    closeOverlay();
-    state = 'menu';
-    setScreen('menu');
-    menuIndex = levelIndex;
-    selectMenu(menuIndex);
-  }
-
   function activateMenu() {
-    if (menuIndex < LEVELS.length) {
-      startLevel(menuIndex);
-    } else {
-      exitApp();
-    }
+    if (menuIndex === 0) { startLevel(0); }
+    else { exitApp(); }
   }
 
   function exitApp() {
