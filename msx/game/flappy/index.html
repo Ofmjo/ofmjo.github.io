@@ -165,7 +165,6 @@
     <div class="hud">
       <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
       <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
-      <div class="hud-item"><span class="hud-label">Зазор</span><b id="hudGap">—</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
     <div class="hint-bar">
@@ -185,7 +184,7 @@
 
 <script>
 (function () {
-  var LEVELS = [{ name: 'Обычно', gap: 188, speed: 220, spawn: 1.42 }];
+  var LEVELS = [{ name: 'Обычно', speed: 220, spawn: 1.42 }];
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
 
@@ -193,6 +192,8 @@
   var GROUND_H = 56;
   var BIRD_R = 16;
   var PIPE_W = 74;
+  var MIN_PIPE_GAP = 100;
+  var MAX_PIPE_GAP = 188;
   var GRAVITY = 1520;
   var FLAP = -430;
   var MAX_FALL = 720;
@@ -208,7 +209,6 @@
   var ctx = canvas.getContext('2d');
   var hudScore = document.getElementById('hudScore');
   var hudBest = document.getElementById('hudBest');
-  var hudGap = document.getElementById('hudGap');
   var overlay = document.getElementById('overlay');
   var ovTitle = document.getElementById('ovTitle');
   var ovText = document.getElementById('ovText');
@@ -286,7 +286,6 @@
       try { localStorage.setItem('msxflappybest', String(best)); } catch (err) {}
     }
     hudBest.textContent = best;
-    hudGap.textContent = LEVELS[levelIndex].gap + ' px';
   }
 
   function resize() {
@@ -303,6 +302,10 @@
   }
 
   function cfg() { return LEVELS[levelIndex]; }
+
+  function randomGap() {
+    return MIN_PIPE_GAP + Math.floor(Math.random() * (MAX_PIPE_GAP - MIN_PIPE_GAP + 1));
+  }
 
   function startLevel(li) {
     levelIndex = li;
@@ -325,11 +328,11 @@
   }
 
   function spawnPipe() {
-    var c = cfg();
-    var minY = c.gap / 2 + 40;
-    var maxY = WORLD_H - GROUND_H - c.gap / 2 - 40;
+    var gap = randomGap();
+    var minY = gap / 2 + 40;
+    var maxY = WORLD_H - GROUND_H - gap / 2 - 40;
     var gapY = minY + Math.random() * Math.max(20, maxY - minY);
-    pipes.push({ x: worldW + PIPE_W, gapY: gapY, scored: false });
+    pipes.push({ x: worldW + PIPE_W, gapY: gapY, gap: gap, scored: false });
   }
 
   function hitRect(cx, cy, r, rx, ry, rw, rh) {
@@ -379,8 +382,8 @@
         score++;
         updateHud();
       }
-      var topH = p.gapY - c.gap / 2;
-      var botY = p.gapY + c.gap / 2;
+      var topH = p.gapY - p.gap / 2;
+      var botY = p.gapY + p.gap / 2;
       if (hitRect(bird.x, bird.y, BIRD_R, p.x, 0, PIPE_W, topH) ||
           hitRect(bird.x, bird.y, BIRD_R, p.x, botY, PIPE_W, WORLD_H - GROUND_H - botY)) {
         die('Вы задели трубу.');
@@ -400,12 +403,11 @@
   }
 
   function drawPipes() {
-    var c = cfg();
     var topH, botY, i, p, capH = 26;
     for (i = 0; i < pipes.length; i++) {
       p = pipes[i];
-      topH = p.gapY - c.gap / 2;
-      botY = p.gapY + c.gap / 2;
+      topH = p.gapY - p.gap / 2;
+      botY = p.gapY + p.gap / 2;
 
       ctx.fillStyle = '#2f9e5e';
       ctx.fillRect(p.x, 0, PIPE_W, topH - capH);

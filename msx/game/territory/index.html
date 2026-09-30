@@ -128,8 +128,8 @@
   var OK_CODES = [13, 32];
   var BACK_CODES = [8, 27, 166, 461, 10009];
 
-  var GRID_W = 56;
-  var GRID_H = 38;
+  var GRID_W = 112;
+  var GRID_H = 76;
   var CELL = 30;
   var WORLD_H = 500;
   var PLAYER_SPEED = 7.6;
@@ -275,8 +275,9 @@
       dy: 0,
       speed: speed,
       trail: [],
+      returnAt: isPlayer ? 0 : Math.floor(rand(12, 19)),
       alive: true,
-      think: rand(0.05, 0.3),
+      think: rand(0.05, 0.15),
       isPlayer: !!isPlayer,
       color: COLORS[id % COLORS.length]
     };
@@ -445,7 +446,11 @@
 
     var i = idx(gx, gy);
     var t = trailAt[i];
-    if (t !== 0 && t !== e.id) {
+    if (t === e.id) {
+      kill(e, e, 'Вы врезались в собственный след.');
+      return;
+    }
+    if (t !== 0) {
       var other = entities[t - 1];
       if (other && other.alive) { kill(other, e); }
     }
@@ -476,37 +481,58 @@
     }
   }
 
+  function nearestOwnedDistance(id, x, y, maxRadius) {
+    for (var radius = 0; radius <= maxRadius; radius++) {
+      for (var dx = -radius; dx <= radius; dx++) {
+        var dy = radius - Math.abs(dx);
+        var nx = x + dx;
+        var ny = y + dy;
+        if (inBounds(nx, ny) && owner[idx(nx, ny)] === id) { return radius; }
+        if (dy > 0 && inBounds(nx, y - dy) && owner[idx(nx, y - dy)] === id) { return radius; }
+      }
+    }
+    return maxRadius + 1;
+  }
+
   function thinkBot(e, dt) {
     e.think -= dt;
     if (e.think > 0) { return; }
-    e.think = rand(0.12, 0.45);
+    e.think = rand(0.08, 0.18);
 
     var dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
     var best = null;
     var bestScore = -1e9;
+    var returning = e.trail.length >= e.returnAt;
+    var currentHome = returning ? nearestOwnedDistance(e.id, e.tileX, e.tileY, 20) : 0;
 
     for (var d = 0; d < dirs.length; d++) {
       var dir = dirs[d];
       if (dir.x === -e.dx && dir.y === -e.dy) { continue; }
       var score = 0;
-      for (var s = 1; s <= 5; s++) {
+      for (var s = 1; s <= 12; s++) {
         var nx = e.tileX + dir.x * s;
         var ny = e.tileY + dir.y * s;
-        if (!inBounds(nx, ny)) { score -= 220; break; }
+        if (!inBounds(nx, ny)) { score -= 260 + (12 - s) * 15; break; }
         var ii = idx(nx, ny);
-        if (trailAt[ii] === e.id) { score -= 200; break; }
-        if (s <= 2 && trailAt[ii] !== 0) { score -= 40; }
-        if (s === 1) {
-          if (owner[ii] === e.id) { score -= 4; } else { score += 12; }
+        if (trailAt[ii] === e.id) { score -= 280; break; }
+        if (trailAt[ii] !== 0) {
+          score += 165 / s;
+          break;
+        }
+        if (owner[ii] === e.id) {
+          score -= s === 1 ? 5 : 1.5;
+          if (e.trail.length) { score += s === 1 ? 72 : 24 / s; }
+        } else {
+          score += (owner[ii] === 0 ? 5 : 2) / (1 + s * 0.08);
         }
       }
-      if (dir.x === e.dx && dir.y === e.dy) { score += 7; }
-      if (e.trail.length > 16) {
-        var cx = e.tileX + dir.x;
-        var cy = e.tileY + dir.y;
-        if (inBounds(cx, cy) && owner[idx(cx, cy)] === e.id) { score += 70; }
+      if (returning) {
+        var homeDistance = nearestOwnedDistance(e.id, e.tileX + dir.x, e.tileY + dir.y, 20);
+        score += (currentHome - homeDistance) * 24 - homeDistance * 0.8;
+        if (owner[idx(e.tileX + dir.x, e.tileY + dir.y)] === e.id) { score += 120; }
       }
-      score += Math.random() * 9;
+      if (dir.x === e.dx && dir.y === e.dy) { score += 3; }
+      score += Math.random() * 1.5;
       if (score > bestScore) { bestScore = score; best = dir; }
     }
     if (best) { e.dx = best.x; e.dy = best.y; }

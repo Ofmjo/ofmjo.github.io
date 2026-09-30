@@ -58,9 +58,9 @@
     background:rgba(76,141,255,.16);border-color:rgba(76,141,255,.65);transform:scale(1.03);
     box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
   }
-  .hud{display:flex;gap:1.2rem;justify-content:center;}
+  .hud{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;}
   .hud-item{
-    display:flex;flex-direction:column;align-items:center;min-width:8.5rem;padding:.5rem 1.2rem;
+    display:flex;flex-direction:column;align-items:center;min-width:7rem;padding:.4rem .9rem;
     border:1px solid var(--line);border-radius:.9rem;background:rgba(255,255,255,.03);
   }
   .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
@@ -112,6 +112,7 @@
       <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
       <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
       <div class="hud-item"><span class="hud-label">Размер</span><b id="hudSize">0</b></div>
+      <div class="hud-item"><span class="hud-label">Здоровье</span><b id="hudHealth">3 / 3</b></div>
       <div class="hud-item"><span class="hud-label">Уровень</span><b id="hudLevel">1</b></div>
     </div>
     <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
@@ -119,6 +120,8 @@
       <span><b class="kbd">◀ ▲ ▼ ▶</b> плыть</span>
       <span><b class="kbd">OK</b> рывок</span>
       <span><b class="kbd">BACK</b> пауза</span>
+      <span>Крючок — смерть · бомба — урон · червь — рост</span>
+      <span>Хищники замечают только перед собой</span>
     </div>
   </section>
 </div>
@@ -142,8 +145,13 @@
   var MAX_SIZE = 46;
   var PLAYER_ACCEL = 1500;
   var PLAYER_MAX = 205;
-  var DASH_IMPULSE = 430;
+  var DASH_IMPULSE = 620;
+  var DASH_MAX_SPEED = 500;
+  var DASH_DURATION = 0.32;
   var DASH_COOLDOWN = 1.1;
+  var MAX_HEALTH = 3;
+  var VISION_HALF_ANGLE = Math.PI * 0.29;
+  var TRAP_SCALE = 0.7;
 
   function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
   function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
@@ -157,6 +165,7 @@
   var hudScore = document.getElementById('hudScore');
   var hudBest = document.getElementById('hudBest');
   var hudSize = document.getElementById('hudSize');
+  var hudHealth = document.getElementById('hudHealth');
   var hudLevel = document.getElementById('hudLevel');
   var overlay = document.getElementById('overlay');
   var ovTitle = document.getElementById('ovTitle');
@@ -176,12 +185,16 @@
 
   var player = { x: 0, y: 0, vx: 0, vy: 0, size: START_SIZE, angle: 0 };
   var fishes = [];
+  var traps = [];
   var bubbles = [];
   var spawnTimer = 0;
+  var trapSpawnTimer = 0;
   var dashTimer = 0;
+  var dashBurst = 0;
   var score = 0;
   var best = 0;
   var eaten = 0;
+  var health = MAX_HEALTH;
   var level = 1;
   var hurtFlash = 0;
   var mouthOpen = 0;
@@ -249,6 +262,7 @@
     }
     hudBest.textContent = best;
     hudSize.textContent = Math.round(player.size);
+    hudHealth.textContent = health + ' / ' + MAX_HEALTH;
     hudLevel.textContent = level;
   }
 
@@ -280,17 +294,24 @@
     player.size = START_SIZE;
     player.angle = 0;
     fishes = [];
+    traps = [];
     bubbles = [];
     spawnTimer = 0;
+    trapSpawnTimer = 4;
     dashTimer = 0;
+    dashBurst = 0;
     score = 0;
     eaten = 0;
+    health = MAX_HEALTH;
     level = 1;
     hurtFlash = 0;
     mouthOpen = 0;
     invuln = 3.0;
     flashText = '';
     flashTimer = 0;
+    for (var ti = 0; ti < 5; ti++) { spawnTrap('worm'); }
+    for (var bi = 0; bi < 2; bi++) { spawnTrap('bomb'); }
+    spawnTrap('hook');
     for (var i = 0; i < cfg().pop; i++) { spawnFish(true); }
     updateHud();
     state = 'playing';
@@ -299,6 +320,17 @@
   }
 
   function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function spawnTrap(type) {
+    var margin = type === 'hook' ? 50 : 30;
+    var x, y, tries = 0;
+    do {
+      x = rand(margin, Math.max(margin + 1, worldW - margin));
+      y = rand(margin, Math.max(margin + 1, worldH - margin));
+      tries++;
+    } while (tries < 40 && Math.hypot(x - player.x, y - player.y) < 145);
+    traps.push({ type: type, x: x, y: y, phase: rand(0, Math.PI * 2) });
+  }
 
   function spawnFish(anywhere) {
     var c = cfg();
@@ -329,7 +361,8 @@
     else if (side === 2) { y = -30; x = rand(30, worldW - 30); }
     else { y = worldH + 30; x = rand(30, worldW - 30); }
 
-    var speed = rand(38, 96) * (size > player.size ? 0.85 : 1.15);
+    var speedScale = Math.max(0.7, Math.min(1.85, player.size / size));
+    var speed = rand(38, 96) * speedScale;
     var angle = anywhere
       ? rand(0, Math.PI * 2)
       : Math.atan2(worldH / 2 - y, worldW / 2 - x) + rand(-0.8, 0.8);
@@ -345,25 +378,24 @@
   }
 
   function updateFish(f, dt) {
-    var c = cfg();
     f.wobble += dt * 3;
     var dx = player.x - f.x;
     var dy = player.y - f.y;
     var dist = Math.hypot(dx, dy) || 1;
+    var toPlayer = Math.atan2(dy, dx);
+    var angleDiff = Math.atan2(Math.sin(toPlayer - f.angle), Math.cos(toPlayer - f.angle));
+    var sightRange = 225 + Math.min(95, f.size * 1.4);
+    var canSeePlayer = dist < sightRange && Math.abs(angleDiff) <= VISION_HALF_ANGLE;
     var playerCanEat = player.size > f.size * 1.15;
     var fishCanEat = f.size > player.size * 1.15;
     var desired = null;
     var fleeing = false;
 
-    if (playerCanEat && dist < 260) {
+    if (playerCanEat && canSeePlayer) {
       desired = Math.atan2(-dy, -dx);
       fleeing = true;
-    } else if (fishCanEat && invuln <= 0) {
-      var ratio = f.size / Math.max(1, player.size);
-      var chaseRange = 200 + Math.min(180, ratio * 120);
-      if (player.size < 18) { chaseRange += 70; }
-      else if (player.size < 26) { chaseRange += 30; }
-      if (dist < chaseRange) { desired = Math.atan2(dy, dx); }
+    } else if (fishCanEat && invuln <= 0 && canSeePlayer) {
+      desired = toPlayer;
     }
 
     if (desired !== null) {
@@ -377,10 +409,15 @@
         var huntRatio = f.size / Math.max(1, player.size);
         sp = Math.max(sp, 105 + Math.min(30, huntRatio * 10));
       } else {
-        sp = Math.max(sp, 110);
+        sp = Math.max(sp, 110 * Math.max(0.8, player.size / f.size));
       }
       f.vx = Math.cos(f.angle) * sp;
       f.vy = Math.sin(f.angle) * sp;
+    } else {
+      f.angle += Math.sin(f.wobble * 0.7) * 0.6 * dt;
+      var drift = Math.hypot(f.vx, f.vy);
+      f.vx = Math.cos(f.angle) * drift;
+      f.vy = Math.sin(f.angle) * drift;
     }
 
     f.x += f.vx * dt;
@@ -398,6 +435,40 @@
       x: e.x + Math.cos(e.angle) * e.size * 0.9,
       y: e.y + Math.sin(e.angle) * e.size * 0.9
     };
+  }
+
+  function checkTrapCollisions() {
+    for (var i = traps.length - 1; i >= 0; i--) {
+      var trap = traps[i];
+      var distance = Math.hypot(player.x - trap.x, player.y - trap.y);
+      if (trap.type === 'hook') {
+        if (distance < player.size * 0.7 + 17 * TRAP_SCALE) {
+          die('Вы попались на крючок!');
+          return;
+        }
+      } else if (trap.type === 'bomb') {
+        if (distance < player.size * 0.7 + 18 * TRAP_SCALE && invuln <= 0) {
+          traps.splice(i, 1);
+          health--;
+          hurtFlash = 0.7;
+          invuln = 1.4;
+          updateHud();
+          if (health <= 0) {
+            die('Бомба лишила вас последнего запаса здоровья.');
+            return;
+          }
+        }
+      } else if (distance < player.size + 12 * TRAP_SCALE) {
+        traps.splice(i, 1);
+        score += 25;
+        player.size = Math.min(MAX_SIZE, player.size + 1.25);
+        updateHud();
+        if (player.size >= MAX_SIZE) {
+          win();
+          return;
+        }
+      }
+    }
   }
 
   function eatCheck(dt) {
@@ -451,13 +522,15 @@
 
     player.vx += input.x * PLAYER_ACCEL * dt;
     player.vy += input.y * PLAYER_ACCEL * dt;
-    var drag = Math.pow(0.06, dt);
+    var dashProgress = Math.max(0, dashBurst / DASH_DURATION);
+    var drag = Math.pow(0.06 + 0.62 * dashProgress, dt);
     player.vx *= drag;
     player.vy *= drag;
     var sp = Math.hypot(player.vx, player.vy);
-    if (sp > PLAYER_MAX) {
-      player.vx = player.vx / sp * PLAYER_MAX;
-      player.vy = player.vy / sp * PLAYER_MAX;
+    var maxSpeed = PLAYER_MAX + (DASH_MAX_SPEED - PLAYER_MAX) * dashProgress;
+    if (sp > maxSpeed) {
+      player.vx = player.vx / sp * maxSpeed;
+      player.vy = player.vy / sp * maxSpeed;
     }
     player.x += player.vx * dt;
     player.y += player.vy * dt;
@@ -465,7 +538,8 @@
     player.y = Math.max(player.size, Math.min(worldH - player.size, player.y));
     if (sp > 8) { player.angle = Math.atan2(player.vy, player.vx); }
 
-    if (dashTimer > 0) { dashTimer -= dt; }
+    if (dashTimer > 0) { dashTimer = Math.max(0, dashTimer - dt); }
+    if (dashBurst > 0) { dashBurst = Math.max(0, dashBurst - dt); }
     if (hurtFlash > 0) { hurtFlash -= dt; }
     if (mouthOpen > 0) { mouthOpen = Math.max(0, mouthOpen - dt * 2.4); }
     if (invuln > 0) { invuln -= dt; }
@@ -477,6 +551,13 @@
       spawnTimer += c.spawn * rand(0.7, 1.3);
     }
     if (spawnTimer <= 0) { spawnTimer = c.spawn; }
+
+    trapSpawnTimer -= dt;
+    if (trapSpawnTimer <= 0 && traps.length < 10) {
+      var trapRoll = Math.random();
+      spawnTrap(trapRoll < 0.5 ? 'worm' : (trapRoll < 0.83 ? 'bomb' : 'hook'));
+      trapSpawnTimer = rand(5, 8);
+    }
 
     for (var i = fishes.length - 1; i >= 0; i--) {
       updateFish(fishes[i], dt);
@@ -494,7 +575,8 @@
       if (bubbles[b].y < -20) { bubbles.splice(b, 1); }
     }
 
-    eatCheck(dt);
+    checkTrapCollisions();
+    if (state === 'playing') { eatCheck(dt); }
   }
 
   function drawFishShape(x, y, size, angle, color, accent, isPlayer) {
@@ -538,6 +620,74 @@
     ctx.restore();
   }
 
+  function drawTrap(trap) {
+    var bob = Math.sin(nowMs() / 420 + trap.phase) * 3;
+    ctx.save();
+    ctx.translate(trap.x, trap.y + bob);
+    ctx.scale(TRAP_SCALE, TRAP_SCALE);
+    if (trap.type === 'hook') {
+      ctx.shadowColor = 'rgba(255,82,82,.7)';
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#e7f0f5';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, -29);
+      ctx.lineTo(0, -5);
+      ctx.quadraticCurveTo(0, 15, -13, 15);
+      ctx.quadraticCurveTo(-23, 15, -20, 4);
+      ctx.stroke();
+      ctx.strokeStyle = '#ff5252';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-14, 14);
+      ctx.quadraticCurveTo(-5, 23, 4, 14);
+      ctx.stroke();
+      ctx.fillStyle = '#ff5252';
+      ctx.beginPath();
+      ctx.arc(0, -29, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (trap.type === 'bomb') {
+      ctx.shadowColor = 'rgba(255,55,55,.75)';
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = '#d92938';
+      ctx.beginPath();
+      ctx.arc(0, 2, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,.42)';
+      ctx.beginPath();
+      ctx.arc(-6, -5, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f6bd65';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(3, -14);
+      ctx.quadraticCurveTo(12, -23, 8, -29);
+      ctx.stroke();
+      ctx.fillStyle = '#fff3a3';
+      ctx.beginPath();
+      ctx.arc(8, -30, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = '#75e58a';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-15, 3);
+      ctx.bezierCurveTo(-10, -13, -3, 16, 3, 0);
+      ctx.bezierCurveTo(8, -15, 13, 12, 17, -2);
+      ctx.stroke();
+      ctx.fillStyle = '#d4ff9c';
+      ctx.beginPath();
+      ctx.arc(17, -2, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function draw() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -565,11 +715,25 @@
       ctx.fill();
     }
 
+    for (var t = 0; t < traps.length; t++) { drawTrap(traps[t]); }
+
     for (var i = 0; i < fishes.length; i++) {
       var f = fishes[i];
       var c1 = 'hsl(' + f.hue + ',58%,58%)';
       var c2 = 'hsl(' + f.hue + ',60%,40%)';
       drawFishShape(f.x, f.y, f.size, f.angle, c1, c2, false);
+    }
+
+    var dashProgress = Math.max(0, dashBurst / DASH_DURATION);
+    if (dashBurst > 0) {
+      var trail = player.size * (2.2 + dashProgress);
+      ctx.strokeStyle = 'rgba(132,225,255,' + (0.25 + dashProgress * 0.55) + ')';
+      ctx.lineWidth = Math.max(3, player.size * 0.3);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(player.x - Math.cos(player.angle) * player.size, player.y - Math.sin(player.angle) * player.size);
+      ctx.lineTo(player.x - Math.cos(player.angle) * trail, player.y - Math.sin(player.angle) * trail);
+      ctx.stroke();
     }
 
     ctx.save();
@@ -624,6 +788,7 @@
     var len = Math.hypot(ax, ay) || 1;
     player.vx += ax / len * DASH_IMPULSE;
     player.vy += ay / len * DASH_IMPULSE;
+    dashBurst = DASH_DURATION;
     dashTimer = DASH_COOLDOWN;
   }
 
