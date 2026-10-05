@@ -67,6 +67,28 @@
   var cam = { x: 0, y: 0, S: 20 };
   var feed, mini, miniCtx, miniData, miniTimer, hudTimer;
   var powerups, puTimer, bonusesOn;
+  var gfxMode, perf, gfxScale = 1;
+  var GFX_STEPS = [1, 0.8, 0.65, 0.55];
+
+  // «Авто»: если FPS держится ниже 42, понижаем разрешение холста ступенями
+  function watchFps() {
+    if (gfxMode !== 'auto') { return; }
+    var now = MSX.now();
+    if (!perf.t0) { perf.t0 = now; perf.frames = 0; return; }
+    perf.frames++;
+    if (now - perf.t0 < 2500) { return; }
+    var fps = perf.frames * 1000 / (now - perf.t0);
+    perf.t0 = now;
+    perf.frames = 0;
+    if (perf.skip > 0) { perf.skip--; return; }
+    if (fps < 42) {
+      var idx = GFX_STEPS.indexOf(gfxScale);
+      if (idx >= 0 && idx < GFX_STEPS.length - 1) {
+        gfxScale = GFX_STEPS[idx + 1];
+        G.setRenderScale(gfxScale);
+      }
+    }
+  }
 
   /* ---------------- геометрия ---------------- */
 
@@ -137,7 +159,7 @@
     return {
       base: css(c), top: css(top), side: css(mix(c, [0, 0, 0], 0.5)),
       trail: css(mix(c, [255, 255, 255], 0.25), 0.45), line: css(mix(c, [255, 255, 255], 0.2)),
-      dark: css(mix(c, [0, 0, 0], 0.35)), rgb: c, topRgb: top
+      dark: css(mix(c, [0, 0, 0], 0.35)), glow: css(c, 0.22), rgb: c, topRgb: top
     };
   }
 
@@ -149,6 +171,7 @@
     if (o) { counts[o]--; }
     owner[i] = id;
     if (id) { counts[id]++; }
+    markDirty(i);
   }
 
   function share(e) { return counts[e.id] / validCount; }
@@ -892,64 +915,164 @@
     ctx.closePath();
   }
 
+  /* ---------------- кэш карты плитками ----------------
+   * Гексы земли рисуются в плитки TILE×TILE (в пикселях устройства) и перерисовываются,
+   * только когда в плитке меняется владелец клетки. Каждый кадр плитки лишь копируются.
+   */
+  var TILE = 512;
+  var MAX_TILES = 48;
+  var tiles = {}, tileCount = 0, tilePool = [], tileK = 0, frameNo = 0;
+
+  function clearTiles() {
+    for (var key in tiles) {
+      if (tiles.hasOwnProperty(key)) { tilePool.push(tiles[key].cv); }
+    }
+    tiles = {};
+    tileCount = 0;
+  }
+
+  function markDirty(i) {
+    if (!tileCount) { return; }
+    var k = tileK;
+    var x0 = Math.floor((CXS[i] - 1.05) * k / TILE), x1 = Math.floor((CXS[i] + 1.05) * k / TILE);
+    var y0 = Math.floor((CYS[i] - 1.05) * k / TILE), y1 = Math.floor((CYS[i] + 1.4) * k / TILE);
+    for (var ty = y0; ty <= y1; ty++) {
+      for (var tx = x0; tx <= x1; tx++) {
+        var t = tiles[ty * 4096 + tx];
+        if (t) { t.dirty = true; }
+      }
+    }
+  }
+
+  function getTile(tx, ty) {
+    var key = ty * 4096 + tx;
+    var t = tiles[key];
+    if (!t) {
+      if (tileCount >= MAX_TILES) {
+        var oldKey = null, oldUsed = Infinity;
+        for (var kk in tiles) {
+          if (tiles.hasOwnProperty(kk) && tiles[kk].used < oldUsed && tiles[kk].used < frameNo) { oldUsed = tiles[kk].used; oldKey = kk; }
+        }
+        if (oldKey !== null) { tilePool.push(tiles[oldKey].cv); delete tiles[oldKey]; tileCount--; }
+      }
+      var cv = tilePool.pop();
+      if (!cv) {
+        cv = document.createElement('canvas');
+        cv.width = TILE;
+        cv.height = TILE;
+      }
+      t = { cv: cv, dirty: true, drawn: false, used: 0 };
+      tiles[key] = t;
+      tileCount++;
+    }
+    t.used = frameNo;
+    return t;
+  }
+
+  function tileHex(c, i, ox, oy, r, dy) {
+    var k = tileK;
+    var sx = CXS[i] * k - ox, sy = CYS[i] * k - oy + dy;
+    var rr = r * k;
+    c.moveTo(sx + HX[0] * rr, sy + HY[0] * rr);
+    for (var n = 1; n < 6; n++) { c.lineTo(sx + HX[n] * rr, sy + HY[n] * rr); }
+    c.closePath();
+  }
+
+  function renderTile(t, tx, ty) {
+    var k = tileK;
+    var c = t.cv.getContext('2d');
+    var ox = tx * TILE, oy = ty * TILE;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = '#05080d';
+    c.fillRect(0, 0, TILE, TILE);
+    c.fillStyle = '#0a0f17';
+    c.beginPath();
+    c.arc(CX * k - ox, CY * k - oy, (RW + 1) * k, 0, TAU);
+    c.fill();
+
+    var wy0 = oy / k - 1.6, wy1 = (oy + TILE) / k + 1.2;
+    var wx0 = ox / k - 1.2, wx1 = (ox + TILE) / k + 1.2;
+    var r0 = Math.max(0, Math.floor(wy0 / 1.5)), r1 = Math.min(H - 1, Math.ceil(wy1 / 1.5));
+    var c0 = Math.max(0, Math.floor(wx0 / SQ3) - 1), c1 = Math.min(W - 1, Math.ceil(wx1 / SQ3) + 1);
+    var r, cc, i, o, g, list, n;
+
+    if (r0 <= r1 && c0 <= c1) {
+      c.fillStyle = css(BG);
+      c.beginPath();
+      var groups = {}, ids = [];
+      for (r = r0; r <= r1; r++) {
+        for (cc = c0; cc <= c1; cc++) {
+          i = r * W + cc;
+          if (!valid[i]) { continue; }
+          o = owner[i];
+          if (!o) { tileHex(c, i, ox, oy, 0.9, 0); continue; }
+          if (!groups[o]) { groups[o] = []; ids.push(o); }
+          groups[o].push(i);
+        }
+      }
+      c.fill();
+      // территории: сначала «бока», потом верх — объёмный вид
+      var depth = k * 0.32;
+      for (g = 0; g < ids.length; g++) {
+        list = groups[ids[g]];
+        c.fillStyle = ents[ids[g]].col.side;
+        c.beginPath();
+        for (n = 0; n < list.length; n++) { tileHex(c, list[n], ox, oy, 0.98, depth); }
+        c.fill();
+      }
+      for (g = 0; g < ids.length; g++) {
+        list = groups[ids[g]];
+        c.fillStyle = ents[ids[g]].col.top;
+        c.beginPath();
+        for (n = 0; n < list.length; n++) { tileHex(c, list[n], ox, oy, 0.98, 0); }
+        c.fill();
+      }
+    }
+
+    c.strokeStyle = 'rgba(255,255,255,.18)';
+    c.lineWidth = Math.max(2, k * 0.15);
+    c.beginPath();
+    c.arc(CX * k - ox, CY * k - oy, (RW + 0.9) * k, 0, TAU);
+    c.stroke();
+    t.dirty = false;
+    t.drawn = true;
+  }
+
+  function drawMap(ctx) {
+    var dpr = view.dpr;
+    var k = cam.S * dpr;
+    if (k !== tileK) { clearTiles(); tileK = k; }
+    frameNo++;
+    var camPX = Math.round(cam.x * k), camPY = Math.round(cam.y * k);
+    cam.x = camPX / k;
+    cam.y = camPY / k;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    var cw = view.canvas.width, ch = view.canvas.height;
+    var tx0 = Math.floor(camPX / TILE), tx1 = Math.floor((camPX + cw - 1) / TILE);
+    var ty0 = Math.floor(camPY / TILE), ty1 = Math.floor((camPY + ch - 1) / TILE);
+    var budget = 3;      // не больше 3 перерисовок изменившихся плиток за кадр — без рывков после захватов
+    for (var ty = ty0; ty <= ty1; ty++) {
+      for (var tx = tx0; tx <= tx1; tx++) {
+        var t = getTile(tx, ty);
+        if (!t.drawn || (t.dirty && budget-- > 0)) { renderTile(t, tx, ty); }
+        ctx.drawImage(t.cv, tx * TILE - camPX, ty * TILE - camPY);
+      }
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
   function draw() {
     var ctx = view.ctx;
     var vw = view.w, vh = view.h;
     updateCamera(false);
+    drawMap(ctx);
     var S = cam.S;
-
-    ctx.fillStyle = '#05080d';
-    ctx.fillRect(0, 0, vw, vh);
-    ctx.fillStyle = '#0a0f17';
-    ctx.beginPath();
-    ctx.arc((CX - cam.x) * S, (CY - cam.y) * S, (RW + 1) * S, 0, TAU);
-    ctx.fill();
 
     var r0 = Math.max(0, Math.floor(cam.y / 1.5) - 2);
     var r1 = Math.min(H - 1, Math.ceil((cam.y + vh / S) / 1.5) + 2);
     var c0 = Math.max(0, Math.floor(cam.x / SQ3) - 2);
     var c1 = Math.min(W - 1, Math.ceil((cam.x + vw / S) / SQ3) + 2);
-    var r, c, i, o;
-
-    // нейтральные гексы
-    ctx.fillStyle = css(BG);
-    ctx.beginPath();
-    for (r = r0; r <= r1; r++) {
-      for (c = c0; c <= c1; c++) {
-        i = r * W + c;
-        if (valid[i] && !owner[i]) { hexAt(ctx, i, 0.9, 0); }
-      }
-    }
-    ctx.fill();
-
-    // территории: сначала «бока», потом верх — объёмный вид
-    var groups = {};
-    var ids = [];
-    for (r = r0; r <= r1; r++) {
-      for (c = c0; c <= c1; c++) {
-        i = r * W + c;
-        o = owner[i];
-        if (!o) { continue; }
-        if (!groups[o]) { groups[o] = []; ids.push(o); }
-        groups[o].push(i);
-      }
-    }
-    var depth = S * 0.32;
-    var g, list, k;
-    for (g = 0; g < ids.length; g++) {
-      list = groups[ids[g]];
-      ctx.fillStyle = ents[ids[g]].col.side;
-      ctx.beginPath();
-      for (k = 0; k < list.length; k++) { hexAt(ctx, list[k], 0.98, depth); }
-      ctx.fill();
-    }
-    for (g = 0; g < ids.length; g++) {
-      list = groups[ids[g]];
-      ctx.fillStyle = ents[ids[g]].col.top;
-      ctx.beginPath();
-      for (k = 0; k < list.length; k++) { hexAt(ctx, list[k], 0.98, 0); }
-      ctx.fill();
-    }
+    var r, c, i, o, g, list, k;
 
     // следы-гексы
     var tg = {};
@@ -986,13 +1109,6 @@
       ctx.stroke();
     }
 
-    // граница арены
-    ctx.strokeStyle = 'rgba(255,255,255,.18)';
-    ctx.lineWidth = Math.max(2, S * 0.15);
-    ctx.beginPath();
-    ctx.arc((CX - cam.x) * S, (CY - cam.y) * S, (RW + 0.9) * S, 0, TAU);
-    ctx.stroke();
-
     drawStorms(ctx);
     drawPowerups(ctx);
 
@@ -1021,12 +1137,11 @@
           ctx.stroke();
         }
       }
-      ctx.save();
-      ctx.shadowColor = e.col.base;
-      ctx.shadowBlur = e.isPlayer ? S * 1.2 : S * 0.6;
+      // свечение — полупрозрачный круг (shadowBlur на ТВ очень дорогой)
+      ctx.fillStyle = e.col.glow;
+      ctx.beginPath(); ctx.arc(px, py, rad * (e.isPlayer ? 1.6 : 1.35), 0, TAU); ctx.fill();
       ctx.fillStyle = e.col.dark;
       ctx.beginPath(); ctx.arc(px, py + S * 0.18, rad, 0, TAU); ctx.fill();
-      ctx.restore();
       ctx.fillStyle = e.col.base;
       ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
       ctx.lineWidth = Math.max(2, S * 0.14);
@@ -1062,9 +1177,8 @@
         ctx.fillStyle = '#0b1118';
         ctx.beginPath(); ctx.arc(ex + fx * rad * 0.1, ey + fy * rad * 0.1, rad * 0.13, 0, TAU); ctx.fill();
       }
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0,0,0,.7)';
-      ctx.strokeText(e.name, px, py - rad - S * 0.2);
+      ctx.fillStyle = 'rgba(0,0,0,.75)';
+      ctx.fillText(e.name, px + 1.5, py - rad - S * 0.2 + 1.5);
       ctx.fillStyle = '#fff';
       ctx.fillText(e.name, px, py - rad - S * 0.2);
     }
@@ -1137,12 +1251,11 @@
       var grow = Math.min(1, pu.age * 3);
       var r = S * 0.95 * grow * (1 + Math.sin(t * 4 + pu.phase) * 0.07);
       var col = PU_INFO[pu.type].color;
-      ctx.save();
-      ctx.shadowColor = col;
-      ctx.shadowBlur = S * 1.2;
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(px, py, r * 1.6, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
       ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
-      ctx.restore();
       ctx.strokeStyle = 'rgba(255,255,255,.9)';
       ctx.lineWidth = Math.max(2, S * 0.1);
       ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
@@ -1160,10 +1273,7 @@
       var R2 = STORM_R * S;
       if (cx < -R2 || cy < -R2 || cx > view.w + R2 || cy > view.h + R2) { continue; }
       var fade = Math.min(1, e.fx.storm);
-      var grad = ctx.createRadialGradient(cx, cy, R2 * 0.2, cx, cy, R2);
-      grad.addColorStop(0, 'rgba(30,58,138,' + (0.32 * fade) + ')');
-      grad.addColorStop(1, 'rgba(30,58,138,' + (0.12 * fade) + ')');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = 'rgba(30,58,138,' + (0.26 * fade) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, R2, 0, TAU); ctx.fill();
       ctx.strokeStyle = 'rgba(147,197,253,' + (0.6 * fade) + ')';
       ctx.lineWidth = Math.max(2, S * 0.1);
@@ -1302,7 +1412,7 @@
     if (!started && state === 'play') {
       ctx.font = '600 ' + Math.round(fs * 1.5) + 'px sans-serif';
       ctx.fillStyle = 'rgba(4,7,11,.6)';
-      var msg = steer === 'turn' ? 'Нажмите ◀ или ▶, чтобы начать' : 'Нажмите стрелку, чтобы начать';
+      var msg = steer === 'turn' ? 'Нажмите влево или вправо, чтобы начать' : 'Нажмите стрелку, чтобы начать';
       var mwid = ctx.measureText(msg).width;
       ctx.fillRect(vw / 2 - mwid / 2 - fs, vh * 0.3 - fs * 1.4, mwid + fs * 2, fs * 2.2);
       ctx.fillStyle = '#fff';
@@ -1322,7 +1432,8 @@
       { key: 'bots', label: 'Соперники', values: [{ value: 5, label: '5' }, { value: 8, label: '8' }, { value: 12, label: '12' }], def: 8 },
       { key: 'diff', label: 'Боты', values: [{ value: 'easy', label: 'Новички' }, { value: 'normal', label: 'Опытные' }, { value: 'smart', label: 'Умные' }], def: 'normal' },
       { key: 'steer', label: 'Управление', values: [{ value: 'abs', label: 'Стрелки — направление' }, { value: 'turn', label: '◀ ▶ — поворот' }], def: 'abs' },
-      { key: 'bonus', label: 'Бонусы', values: [{ value: true, label: 'Вкл' }, { value: false, label: 'Выкл' }], def: true }
+      { key: 'bonus', label: 'Бонусы', values: [{ value: true, label: 'Вкл' }, { value: false, label: 'Выкл' }], def: true },
+      { key: 'gfx', label: 'Графика', values: [{ value: 'auto', label: 'Авто' }, { value: 'high', label: 'Чётко' }, { value: 'fast', label: 'Быстро' }], def: 'auto' }
     ],
     hud: [
       { key: 'land', label: 'Земля', value: '0%' },
@@ -1341,6 +1452,10 @@
       bonusesOn = s.bonus;
       powerups = [];
       puTimer = 0;
+      gfxMode = s.gfx;
+      perf = { frames: 0, t0: 0, skip: 1 };
+      clearTiles();
+      tileK = 0;
       G.hints(steer === 'turn'
         ? [['◀ ▶', 'поворот на 45°'], ['1–9', 'направление по компасу'], ['OK / BACK', 'пауза']]
         : [['◀ ▲ ▼ ▶', 'направление'], ['две стрелки быстро', 'диагональ'], ['1–9', 'компас'], ['OK / BACK', 'пауза']]);
@@ -1395,12 +1510,18 @@
       resize(view.w, view.h);
       updateCamera(true);
       updateHud();
+      gfxScale = gfxMode === 'fast' ? 0.62 : 1;
+      G.setRenderScale(gfxScale);
     },
     resize: function (w, h) {
       resize(w, h);
       if (player) { updateCamera(true); }
     },
-    update: update,
+    onPause: function () { if (perf) { perf.t0 = 0; } },
+    update: function (dt) {
+      watchFps();
+      update(dt);
+    },
     draw: draw,
     key: function (k, rep) {
       if (k === 'ok') { if (!rep) { G.pause(); } return true; }

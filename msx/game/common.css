@@ -57,8 +57,18 @@ body{
 }
 .msx-item .name{font-weight:550;}
 .msx-item .val{margin-left:auto;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;}
-.msx-item .val:before{content:"‹  ";color:var(--muted);}
-.msx-item .val:after{content:"  ›";color:var(--muted);}
+/* стрелки настройки — CSS-треугольники, без символов шрифта */
+.msx-item .val:before,.msx-item .val:after{
+  content:"";
+  display:inline-block;
+  vertical-align:.08em;
+  border:solid transparent;
+  border-width:.3em;
+}
+.msx-item .val:before{border-left-width:0;border-right:.42em solid rgba(255,255,255,.4);margin-right:.75em;}
+.msx-item .val:after{border-right-width:0;border-left:.42em solid rgba(255,255,255,.4);margin-left:.75em;}
+.msx-item.sel .val:before{border-right-color:#fff;}
+.msx-item.sel .val:after{border-left-color:#fff;}
 .msx-item.sel{
   background:rgba(var(--accent-rgb),.16);
   border-color:rgba(var(--accent-rgb),.65);

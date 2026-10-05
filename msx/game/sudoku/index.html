@@ -378,6 +378,42 @@
     drawPad(ctx);
   }
 
+  // иконки панели рисуем фигурами — символов ✎ ✕ нет в шрифтах многих ТВ
+  function padIcon(ctx, idx, cx, cy, r) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, r * 0.32);
+    if (idx === PAD_NOTES) {
+      // карандаш
+      ctx.rotate(-Math.PI / 4);
+      ctx.strokeRect(-r * 1.1, -r * 0.32, r * 1.7, r * 0.64);
+      ctx.beginPath();
+      ctx.moveTo(r * 0.6, -r * 0.32);
+      ctx.lineTo(r * 1.15, 0);
+      ctx.lineTo(r * 0.6, r * 0.32);
+      ctx.stroke();
+    } else if (idx === PAD_ERASE) {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.8, -r * 0.8); ctx.lineTo(r * 0.8, r * 0.8);
+      ctx.moveTo(r * 0.8, -r * 0.8); ctx.lineTo(-r * 0.8, r * 0.8);
+      ctx.stroke();
+    } else {
+      // лампочка
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.25, r * 0.75, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35, r * 0.75); ctx.lineTo(r * 0.35, r * 0.75);
+      ctx.moveTo(-r * 0.25, r * 1.1); ctx.lineTo(r * 0.25, r * 1.1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawPad(ctx) {
     var ps = L.ps, px = L.px, py = L.py;
     var gap = Math.max(4, Math.round(ps * 0.08));
@@ -412,10 +448,7 @@
         }
       } else {
         var label = idx === PAD_NOTES ? 'Заметки' : (idx === PAD_ERASE ? 'Стереть' : 'Подсказка');
-        var icon = idx === PAD_NOTES ? '✎' : (idx === PAD_ERASE ? '✕' : '?');
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = '600 ' + Math.round(w * 0.32) + 'px sans-serif';
-        ctx.fillText(icon, x + w / 2, y + w * 0.4);
+        padIcon(ctx, idx, x + w / 2, y + w * 0.4, w * 0.15);
         ctx.fillStyle = 'rgba(255,255,255,.6)';
         ctx.font = Math.round(w * 0.15) + 'px sans-serif';
         ctx.fillText(label, x + w / 2, y + w * 0.76);

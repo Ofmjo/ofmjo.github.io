@@ -129,6 +129,81 @@
 
   function exitToHub() { window.location.href = HUB_URL; }
 
+  /* ---------------- иконки ----------------
+   * В шрифтах многих ТВ нет символов ◀ ▲ ▼ ▶, ₽ и т.п. Стрелки рисуем встроенным SVG.
+   */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var ARROW_PTS = { '◀': '8,1 1,5 8,9', '▶': '2,1 9,5 2,9', '▲': '1,8.5 5,1.5 9,8.5', '▼': '1,1.5 9,1.5 5,8.5' };
+
+  function arrowIcon(ch) {
+    var s = document.createElementNS(SVG_NS, 'svg');
+    s.setAttribute('viewBox', '0 0 10 10');
+    s.style.width = '.78em';
+    s.style.height = '.78em';
+    s.style.display = 'inline-block';
+    s.style.verticalAlign = '-.06em';
+    var p = document.createElementNS(SVG_NS, 'polygon');
+    p.setAttribute('points', ARROW_PTS[ch]);
+    p.setAttribute('fill', 'currentColor');
+    s.appendChild(p);
+    return s;
+  }
+
+  // Текст, в котором стрелки заменены SVG-иконками.
+  function iconText(text) {
+    var frag = document.createDocumentFragment();
+    var buf = '';
+    text = String(text);
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (ARROW_PTS[ch]) {
+        if (buf) { frag.appendChild(document.createTextNode(buf)); buf = ''; }
+        frag.appendChild(arrowIcon(ch));
+      } else {
+        buf += ch;
+      }
+    }
+    if (buf) { frag.appendChild(document.createTextNode(buf)); }
+    return frag;
+  }
+
+  function iconize(node) {
+    var t = node.textContent;
+    node.textContent = '';
+    node.appendChild(iconText(t));
+  }
+
+  // Есть ли символ в шрифте: сравниваем отрисовку с заведомо отсутствующим символом.
+  function hasGlyph(ch) {
+    try {
+      var c = document.createElement('canvas');
+      c.width = 48;
+      c.height = 48;
+      var x = c.getContext('2d');
+      x.font = '36px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
+      x.textBaseline = 'top';
+      x.fillStyle = '#000';
+      var snap = function (s) {
+        x.clearRect(0, 0, 48, 48);
+        x.fillText(s, 4, 4);
+        return x.getImageData(0, 0, 48, 48).data;
+      };
+      var a = snap(ch), b = snap('￿');
+      var empty = true, same = true;
+      for (var i = 3; i < a.length; i += 4) {
+        if (a[i]) { empty = false; }
+        if (a[i] !== b[i]) { same = false; }
+      }
+      return !empty && !same;
+    } catch (err) { return true; }
+  }
+
+  var rubSign = null;
+  function rub() {
+    if (rubSign === null) { rubSign = hasGlyph('₽') ? '₽' : 'руб.'; }
+    return rubSign;
+  }
+
   // Размер шрифта под экран: 22px на 1920×1080, пропорционально на остальных.
   function fitFont() {
     var w = window.innerWidth || 1280;
@@ -154,6 +229,7 @@
     var dirty = true;
     var toastTimer = null;
     var view = null;
+    var renderScale = 1;    // доля разрешения холста (меньше — быстрее на слабых ТВ)
 
     /* --- DOM --- */
     document.body.appendChild(el('div', 'msx-glow'));
@@ -217,8 +293,8 @@
       var bar = el('div', 'msx-hints');
       for (var i = 0; i < list.length; i++) {
         var span = el('span');
-        span.appendChild(el('b', 'msx-kbd', list[i][0]));
-        span.appendChild(document.createTextNode(list[i][1]));
+        span.appendChild(el('b', 'msx-kbd')).appendChild(iconText(list[i][0]));
+        span.appendChild(iconText(list[i][1]));
         bar.appendChild(span);
       }
       return bar;
@@ -276,8 +352,8 @@
       for (var i = 0; i < menuItems.length; i++) {
         var it = menuItems[i];
         var row = el('div', 'msx-item' + (i === menuIndex ? ' sel' : ''));
-        row.appendChild(el('span', 'name', it.option ? it.option.label : it.label));
-        if (it.option) { row.appendChild(el('span', 'val', optionLabel(it.option))); }
+        row.appendChild(el('span', 'name')).appendChild(iconText(it.option ? it.option.label : it.label));
+        if (it.option) { row.appendChild(el('span', 'val')).appendChild(iconText(optionLabel(it.option))); }
         menuList.appendChild(row);
       }
       menuSub.textContent = cfg.info ? (cfg.info(settings) || '') : '';
@@ -461,7 +537,8 @@
       if (!view) { return; }
       var w = Math.max(1, stage.clientWidth);
       var h = Math.max(1, stage.clientHeight);
-      var dpr = window.devicePixelRatio || 1;
+      // На 4K-телевизорах devicePixelRatio бывает 2 — ограничиваем холст 1920 px по ширине.
+      var dpr = Math.min(window.devicePixelRatio || 1, 1920 / w) * renderScale;
       view.canvas.width = Math.round(w * dpr);
       view.canvas.height = Math.round(h * dpr);
       view.canvas.style.width = w + 'px';
@@ -519,6 +596,11 @@
       },
       hints: setHints,
       invalidate: function () { dirty = true; },
+      setRenderScale: function (s) {
+        if (s === renderScale) { return; }
+        renderScale = s;
+        layout();
+      },
       toast: function (text, ms) {
         toastEl.textContent = text;
         toastEl.className = 'msx-toast show';
@@ -550,6 +632,10 @@
     fmtTime: fmtTime,
     fmtNum: fmtNum,
     rrect: rrect,
+    iconText: iconText,
+    iconize: iconize,
+    hasGlyph: hasGlyph,
+    rub: rub,
     now: now,
     exitToHub: exitToHub
   };

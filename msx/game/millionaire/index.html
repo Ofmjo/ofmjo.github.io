@@ -105,6 +105,7 @@
 <script>
 (function () {
   var PRIZES = [500, 1000, 2000, 3000, 5000, 10000, 15000, 25000, 50000, 100000, 200000, 400000, 800000, 1500000, 3000000];
+  var RUB = MSX.rub();                // «₽» или «руб.», если знака нет в шрифте телевизора
   var SAFE = { 4: true, 9: true };     // индексы несгораемых сумм (5 000 и 100 000)
   var LETTERS = ['A', 'B', 'C', 'D'];
   var FRIENDS = ['Сергей', 'Ольга', 'дядя Миша', 'Марина', 'Андрей', 'бабушка Валя', 'Костя', 'Наташа'];
@@ -122,7 +123,7 @@
   var timer = null;
   var best, correctCount;
 
-  function prizeText(i) { return i < 0 ? '0 ₽' : MSX.fmtNum(PRIZES[i]) + ' ₽'; }
+  function prizeText(i) { return i < 0 ? '0 ' + RUB : MSX.fmtNum(PRIZES[i]) + ' ' + RUB; }
 
   function guaranteed() {
     var g = -1;
@@ -200,7 +201,7 @@
     for (var r = PRIZES.length - 1; r >= 0; r--) {
       var rung = E('div', 'rung' + (SAFE[r] ? ' safe' : ''));
       rung.appendChild(E('span', null, String(r + 1)));
-      rung.appendChild(E('b', null, MSX.fmtNum(PRIZES[r]) + ' ₽'));
+      rung.appendChild(E('b', null, MSX.fmtNum(PRIZES[r]) + ' ' + RUB));
       ladder.appendChild(rung);
       dom.rungs[r] = rung;
     }
@@ -326,9 +327,9 @@
       title: title,
       text: text,
       stats: [
-        ['Выигрыш', MSX.fmtNum(won) + ' ₽', isBest && won > 0],
+        ['Выигрыш', MSX.fmtNum(won) + ' ' + RUB, isBest && won > 0],
         ['Верных ответов', correctCount + ' из 15'],
-        ['Рекорд', MSX.fmtNum(best) + ' ₽']
+        ['Рекорд', MSX.fmtNum(best) + ' ' + RUB]
       ]
     });
   }
@@ -437,10 +438,10 @@
     var sum = level > 0 ? PRIZES[level - 1] : 0;
     G.overlay({
       title: 'Забрать деньги?',
-      text: 'Вы уйдёте с суммой ' + MSX.fmtNum(sum) + ' ₽.',
+      text: 'Вы уйдёте с суммой ' + MSX.fmtNum(sum) + ' ' + RUB + '.',
       items: [
         { label: 'Продолжить игру', run: function () { G.closeOverlay(); } },
-        { label: 'Забрать ' + MSX.fmtNum(sum) + ' ₽', run: function () { used.take = true; end('take'); } }
+        { label: 'Забрать ' + MSX.fmtNum(sum) + ' ' + RUB, run: function () { used.take = true; end('take'); } }
       ],
       back: function () { G.closeOverlay(); }
     });
@@ -453,13 +454,13 @@
     title: 'Кто хочет стать миллионером?',
     hud: [
       { key: 'q', label: 'Вопрос', value: '1 / 15' },
-      { key: 'prize', label: 'На кону', value: '500 ₽' },
-      { key: 'safe', label: 'Несгораемая', value: '0 ₽' }
+      { key: 'prize', label: 'На кону', value: '500 ' + RUB },
+      { key: 'safe', label: 'Несгораемая', value: '0 ' + RUB }
     ],
     hints: [['◀ ▲ ▼ ▶', 'выбор'], ['1–4', 'ответ A–D'], ['OK', 'ответить'], ['▲', 'подсказки'], ['BACK', 'пауза']],
     info: function () {
       var b = MSX.store.get('mil.best', 0);
-      return b ? 'Рекорд: ' + MSX.fmtNum(b) + ' ₽' : '15 вопросов до 3 000 000 ₽';
+      return b ? 'Рекорд: ' + MSX.fmtNum(b) + ' ' + RUB : '15 вопросов до 3 000 000 ' + RUB;
     },
     start: function () {
       build();

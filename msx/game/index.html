@@ -307,6 +307,9 @@
   }
 
   document.addEventListener('keydown', onKeyDown);
+  // стрелки в подсказках — SVG, в шрифтах ТВ этих символов может не быть
+  var kbds = document.querySelectorAll('.kbd');
+  for (var q = 0; q < kbds.length; q++) { MSX.iconize(kbds[q]); }
   render();
 })();
 </script>
