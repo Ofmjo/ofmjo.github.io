@@ -4,828 +4,1092 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Территория — MSX</title>
+<link rel="stylesheet" href="../common.css"/>
 <style>
-  :root{
-    color-scheme: dark;
-    --bg:#070a0f;
-    --line:rgba(255,255,255,.08);
-    --text:rgba(255,255,255,.94);
-    --muted:rgba(255,255,255,.5);
-    --accent:#4c8dff;
-  }
-  *{box-sizing:border-box;}
-  html{font-size:clamp(15px,1.05vw,24px);}
-  html,body{height:100%;margin:0;overflow:hidden;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    user-select:none;
-    -webkit-tap-highlight-color:transparent;
-  }
-  body::before{
-    content:"";
-    position:fixed;inset:0;pointer-events:none;
-    background:
-      radial-gradient(60% 55% at 50% 0%,rgba(76,141,255,.16),transparent 70%),
-      radial-gradient(50% 45% at 85% 100%,rgba(140,69,247,.12),transparent 70%);
-  }
-  #app{position:relative;height:100%;}
-  .screen{position:absolute;inset:0;display:none;flex-direction:column;padding:2.2rem 2.6rem;}
-  .screen.active{display:flex;}
-  .brand{text-align:center;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);}
-  .menu-head{margin-top:4vh;text-align:center;}
-  .menu-head h1{margin:.3rem 0 0;font-size:3.2rem;font-weight:650;letter-spacing:-.02em;}
-  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
-  .menu-list{display:flex;flex-direction:column;gap:.7rem;width:min(36rem,100%);margin:2.4rem auto 0;}
-  .menu-item{
-    display:flex;align-items:center;gap:1rem;padding:1rem 1.4rem;border-radius:1rem;
-    border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:1.05rem;
-    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
-  }
-  .menu-item .name{font-weight:550;}
-  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;}
-  .menu-item.sel{
-    background:rgba(76,141,255,.16);border-color:rgba(76,141,255,.65);transform:scale(1.03);
-    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
-  }
-  .hud{display:flex;gap:1.2rem;justify-content:center;}
-  .hud-item{
-    display:flex;flex-direction:column;align-items:center;min-width:8.5rem;padding:.5rem 1.2rem;
-    border:1px solid var(--line);border-radius:.9rem;background:rgba(255,255,255,.03);
-  }
-  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
-  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
-  .board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:1.2rem 0;}
-  .board-wrap canvas{
-    display:block;width:100%;height:100%;border-radius:1rem;border:1px solid var(--line);background:#0a1016;
-  }
-  .hint-bar{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;justify-content:center;color:var(--muted);font-size:.85rem;}
-  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
-  .kbd{
-    border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:.45rem;
-    padding:.1rem .5rem;color:rgba(255,255,255,.85);font-size:.8rem;
-  }
-  .overlay{
-    position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
-    background:rgba(4,7,11,.75);opacity:0;pointer-events:none;transition:opacity .15s ease;
-  }
-  .overlay.show{opacity:1;pointer-events:auto;}
-  .panel{
-    width:min(34rem,86vw);padding:2rem;border-radius:1.4rem;border:1px solid var(--line);
-    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
-    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
-  }
-  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
-  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
-  .panel .menu-list{margin:0;width:100%;}
+  :root{--accent:#4c8dff;--accent-rgb:76,141,255;--glow2:244,114,182;}
+  #msx-game .msx-stage{margin:.6rem 0;border-radius:1rem;overflow:hidden;border:1px solid rgba(255,255,255,.08);}
 </style>
 </head>
 <body>
-<div id="app">
-  <section id="screen-menu" class="screen active">
-    <div class="brand">MSX Games</div>
-    <div class="menu-head">
-      <h1>Территория</h1>
-      <p class="sub">Вернулся в свою землю — забрал всю выделенную область. В свой след врезаться нельзя, а если соперник перережет твой — начинаешь заново</p>
-    </div>
-    <nav id="menuList" class="menu-list"></nav>
-    <div style="flex:1"></div>
-    <div class="hint-bar">
-      <span><b class="kbd">▲ ▼</b> выбор</span>
-      <span><b class="kbd">OK</b> играть</span>
-      <span><b class="kbd">BACK</b> выход</span>
-    </div>
-  </section>
-
-  <section id="screen-game" class="screen">
-    <div class="hud">
-      <div class="hud-item"><span class="hud-label">Владение</span><b id="hudLand">0%</b></div>
-      <div class="hud-item"><span class="hud-label">Соперники</span><b id="hudBots">0</b></div>
-      <div class="hud-item"><span class="hud-label">Захвачено</span><b id="hudScore">0</b></div>
-    </div>
-    <div id="boardWrap" class="board-wrap"><canvas id="scene"></canvas></div>
-    <div class="hint-bar">
-      <span><b class="kbd">◀ ▲ ▼ ▶</b> движение</span>
-      <span><b class="kbd">OK</b> пауза</span>
-      <span><b class="kbd">BACK</b> пауза</span>
-    </div>
-  </section>
-</div>
-
-<div id="overlay" class="overlay">
-  <div class="panel">
-    <h2 id="ovTitle"></h2>
-    <p id="ovText" class="ov-text"></p>
-    <nav id="ovList" class="menu-list"></nav>
-  </div>
-</div>
-
+<script src="../common.js"></script>
 <script>
 (function () {
-  var LEVELS = [{ name: 'Обычно', bots: 5 }];
-  var OK_CODES = [13, 32];
-  var BACK_CODES = [8, 27, 166, 461, 10009];
+  /*
+   * Территория в стиле hexanaut: шестиугольная сетка (pointy-top, смещённые нечётные ряды),
+   * круглая арена, плавное движение с ограниченной скоростью поворота.
+   * Мировая единица — радиус гекса: центр клетки (c, r) = (√3·(c + (r&1)/2), 1.5·r).
+   */
+  var SQ3 = Math.sqrt(3);
+  var PI = Math.PI, TAU = Math.PI * 2;
+  var MAPS = { m: 34, l: 50, xl: 68 };            // радиус арены в гексах
+  var DIFF = {
+    easy:   { speed: 4.7, aggr: [0.1, 0.35], caution: [0, 1], react: 0.65, ignore: 0.22, greed: [4, 10] },
+    normal: { speed: 5.1, aggr: [0.35, 0.7], caution: [1, 2], react: 0.32, ignore: 0.07, greed: [5, 13] },
+    smart:  { speed: 5.45, aggr: [0.7, 1.0], caution: [2, 3], react: 0.14, ignore: 0, greed: [6, 16] }
+  };
+  var PLAYER_SPEED = 5.6;
+  var TURN = 3.8;                // рад/с — радиус разворота ≈ 1.5 гекса
+  var VIEW_UNITS = 40;           // сколько радиусов гекса по высоте экрана
+  var WIN_SHARE = 0.5;
+  var GRACE = 3;                 // последние клетки следа, повторный заход в которые не смертелен
+  var PALETTE = ['#4c8dff', '#ff5d73', '#ffc233', '#2fd38a', '#a78bfa', '#ff7ad9', '#22d3ee', '#ff9640',
+    '#a3e635', '#e879f9', '#2dd4bf', '#f43f5e', '#facc15', '#93c5fd', '#c4b5fd'];
+  var NAMES = ['Кот', 'Бублик', 'Пельмень', 'Ёжик', 'Зефир', 'Шаурма', 'Лёха', 'Тигр', 'Пиксель', 'Капитан',
+    'Масяня', 'Вжух', 'Ниндзя', 'Кекс', 'Бобр', 'Сова', 'Гром', 'Хомяк', 'Барсик', 'Дракон', 'Сырник',
+    'Енот', 'Мармелад', 'Котлета', 'Лис', 'Батон', 'Пончик', 'Шмель', 'Морж', 'Квант'];
+  var BG = [16, 23, 33];
+  var DIGIT_DIR = { '6': 0, '3': 1, '2': 2, '1': 3, '4': 4, '7': 5, '8': 6, '9': 7 };
+  var ARROW_DIR = { right: 0, down: 2, left: 4, up: 6 };
 
-  var GRID_W = 112;
-  var GRID_H = 76;
-  var CELL = 30;
-  var WORLD_H = 500;
-  var PLAYER_SPEED = 7.6;
-  var WIN_SHARE = 0.9;
-  var COLORS = ['#4c8dff', '#f87171', '#34d399', '#fbbf24', '#c084fc', '#22d3ee', '#fb923c', '#a3e635', '#f472b6'];
-
-  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
-  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
-
-  var screenMenu = document.getElementById('screen-menu');
-  var screenGame = document.getElementById('screen-game');
-  var menuList = document.getElementById('menuList');
-  var boardWrap = document.getElementById('boardWrap');
-  var canvas = document.getElementById('scene');
-  var ctx = canvas.getContext('2d');
-  var hudLand = document.getElementById('hudLand');
-  var hudBots = document.getElementById('hudBots');
-  var hudScore = document.getElementById('hudScore');
-  var overlay = document.getElementById('overlay');
-  var ovTitle = document.getElementById('ovTitle');
-  var ovText = document.getElementById('ovText');
-  var ovList = document.getElementById('ovList');
-
-  var screen = 'menu';
-  var state = 'menu';
-  var levelIndex = 0;
-  var menuIndex = 0;
-  var MENU_LEN = 2;
-
-  var k = 1;
-  var viewW = 900;
-  var viewCellsX = 32;
-  var viewCellsY = WORLD_H / CELL;
-  var camX = 0;
-  var camY = 0;
-
-  var owner = null;
-  var trailAt = null;
-  var entities = [];
-  var player = null;
-  var landGained = 0;
-  var shareCache = 0;
-  var minimap = null;
-  var miniCtx = null;
-  var miniData = null;
-  var miniTimer = 0;
-  var flashText = '';
-  var flashTimer = 0;
-
-  var rafId = null;
-  var lastTime = 0;
-  var overlayOpen = false;
-  var ovItems = [];
-  var ovIndex = 0;
-  var resultReason = '';
-  var held = {};
-
-  function nowMs() {
-    return (window.performance && window.performance.now) ? window.performance.now() : Date.now();
-  }
-  function rand(a, b) { return a + Math.random() * (b - a); }
-  function idx(x, y) { return y * GRID_W + x; }
-  function inBounds(x, y) { return x >= 0 && y >= 0 && x < GRID_W && y < GRID_H; }
-  function cfg() { return LEVELS[levelIndex]; }
-
-  function buildMenuItem(label, meta) {
-    var item = document.createElement('div');
-    item.className = 'menu-item';
-    var name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = label;
-    item.appendChild(name);
-    if (meta) {
-      var m = document.createElement('span');
-      m.className = 'meta';
-      m.textContent = meta;
-      item.appendChild(m);
-    }
-    return item;
+  // углы шестиугольника (вершиной вверх)
+  var HX = [], HY = [];
+  for (var hk = 0; hk < 6; hk++) {
+    HX.push(Math.cos(PI / 180 * (60 * hk - 30)));
+    HY.push(Math.sin(PI / 180 * (60 * hk - 30)));
   }
 
-  function buildMenu() {
-    menuList.innerHTML = '';
-    menuList.appendChild(buildMenuItem('Играть', null));
-    menuList.appendChild(buildMenuItem('Выход', null));
-    selectMenu(menuIndex);
+  var G, view;
+  var W, H, N, R, RW, CX, CY, valid, validCount, NB, CXS, CYS;
+  var owner, trail, counts, mark, stack, seen, par, bq, stamp;
+  var ents, player, state, deathT, deathReason, started, steer, lastPress;
+  var time, kills, maxShare, best, newBest, cfgD, playerHomeT;
+  var cam = { x: 0, y: 0, S: 20 };
+  var feed, mini, miniCtx, miniData, miniTimer, hudTimer;
+
+  /* ---------------- геометрия ---------------- */
+
+  function cellOf(x, y) {
+    var q = SQ3 / 3 * x - y / 3;
+    var r = 2 / 3 * y;
+    var s = -q - r;
+    var rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
+    var dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
+    if (dq > dr && dq > ds) { rq = -rr - rs; }
+    else if (dr > ds) { rr = -rq - rs; }
+    var row = rr;
+    var col = rq + (rr - (rr & 1)) / 2;
+    if (col < 0 || row < 0 || col >= W || row >= H) { return -1; }
+    return row * W + col;
   }
 
-  function selectMenu(i) {
-    for (var n = 0; n < menuList.children.length; n++) {
-      menuList.children[n].classList.toggle('sel', n === i);
+  function angDiff(a, b) {
+    var d = (b - a) % TAU;
+    if (d > PI) { d -= TAU; }
+    if (d < -PI) { d += TAU; }
+    return d;
+  }
+
+  function buildGrid(radius) {
+    R = radius;
+    RW = R * SQ3;
+    W = Math.ceil(2 * RW / SQ3) + 6;
+    H = Math.ceil(2 * RW / 1.5) + 6;
+    N = W * H;
+    CX = SQ3 * W / 2;
+    CY = 1.5 * H / 2;
+    valid = new Uint8Array(N);
+    CXS = new Float32Array(N);
+    CYS = new Float32Array(N);
+    NB = new Int32Array(N * 6);
+    validCount = 0;
+    for (var r = 0; r < H; r++) {
+      for (var c = 0; c < W; c++) {
+        var i = r * W + c;
+        var x = SQ3 * (c + 0.5 * (r & 1));
+        var y = 1.5 * r;
+        CXS[i] = x;
+        CYS[i] = y;
+        if (Math.sqrt((x - CX) * (x - CX) + (y - CY) * (y - CY)) <= RW + 0.2) { valid[i] = 1; validCount++; }
+        var odd = r & 1;
+        var d = odd
+          ? [[1, 0], [-1, 0], [1, -1], [0, -1], [1, 1], [0, 1]]
+          : [[1, 0], [-1, 0], [0, -1], [-1, -1], [0, 1], [-1, 1]];
+        for (var k = 0; k < 6; k++) {
+          var nc = c + d[k][0], nr = r + d[k][1];
+          NB[i * 6 + k] = (nc < 0 || nr < 0 || nc >= W || nr >= H) ? -1 : nr * W + nc;
+        }
+      }
     }
   }
 
-  function setScreen(name) {
-    screen = name;
-    screenMenu.classList.toggle('active', name === 'menu');
-    screenGame.classList.toggle('active', name === 'game');
-  }
+  /* ---------------- цвета ---------------- */
 
-  function landShare(id) {
-    var total = GRID_W * GRID_H;
-    var count = 0;
-    for (var i = 0; i < total; i++) { if (owner[i] === id) { count++; } }
-    return count / total;
+  function hexRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function mix(a, b, k) { return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k]; }
+  function css(c, a) {
+    return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + (a === undefined ? 1 : a) + ')';
   }
-
-  function updateHud() {
-    hudScore.textContent = landGained;
-    if (!owner) {
-      hudLand.textContent = '0%';
-      hudBots.textContent = '0';
-      return;
-    }
-    shareCache = landShare(1);
-    hudLand.textContent = Math.round(shareCache * 100) + '%';
-    var alive = 0;
-    for (var i = 1; i < entities.length; i++) { if (entities[i].alive) { alive++; } }
-    hudBots.textContent = alive;
-  }
-
-  function resize() {
-    var rect = boardWrap.getBoundingClientRect();
-    var w = Math.max(1, Math.round(rect.width));
-    var h = Math.max(1, Math.round(rect.height));
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    k = canvas.height / WORLD_H;
-    viewW = canvas.width / k;
-    viewCellsX = viewW / CELL;
-    viewCellsY = WORLD_H / CELL;
-  }
-
-  function makeEntity(id, tileX, tileY, speed, isPlayer) {
+  function colorsFor(id) {
+    var c = hexRgb(PALETTE[(id - 1) % PALETTE.length]);
+    var top = mix(c, BG, 0.18);
     return {
-      id: id,
-      tileX: tileX,
-      tileY: tileY,
-      x: tileX + 0.5,
-      y: tileY + 0.5,
-      dx: 0,
-      dy: 0,
-      speed: speed,
-      trail: [],
-      returnAt: isPlayer ? 0 : Math.floor(rand(12, 19)),
-      alive: true,
-      think: rand(0.05, 0.15),
-      isPlayer: !!isPlayer,
-      color: COLORS[id % COLORS.length]
+      base: css(c), top: css(top), side: css(mix(c, [0, 0, 0], 0.5)),
+      trail: css(mix(c, [255, 255, 255], 0.25), 0.45), line: css(mix(c, [255, 255, 255], 0.2)),
+      dark: css(mix(c, [0, 0, 0], 0.35)), rgb: c, topRgb: top
     };
   }
 
-  function paintPatch(e) {
-    for (var dx = -1; dx <= 1; dx++) {
-      for (var dy = -1; dy <= 1; dy++) {
-        var x = e.tileX + dx, y = e.tileY + dy;
-        if (inBounds(x, y)) { owner[idx(x, y)] = e.id; }
+  /* ---------------- поле ---------------- */
+
+  function setOwner(i, id) {
+    var o = owner[i];
+    if (o === id) { return; }
+    if (o) { counts[o]--; }
+    owner[i] = id;
+    if (id) { counts[id]++; }
+  }
+
+  function share(e) { return counts[e.id] / validCount; }
+
+  function freeName() {
+    var used = {};
+    for (var i = 1; i < ents.length; i++) { if (ents[i] && ents[i].alive) { used[ents[i].name] = true; } }
+    var free = NAMES.filter(function (n) { return !used[n]; });
+    return free.length ? MSX.pick(free) : MSX.pick(NAMES);
+  }
+
+  function addFeed(text, hi) {
+    feed.unshift({ text: text, t: 4.5, hi: !!hi });
+    if (feed.length > 5) { feed.length = 5; }
+  }
+
+  function edgeDist(x, y) {
+    return RW - Math.sqrt((x - CX) * (x - CX) + (y - CY) * (y - CY));
+  }
+
+  /* ---------------- сущности ---------------- */
+
+  function newEntity(id, isPlayer) {
+    return {
+      id: id, isPlayer: isPlayer, alive: false, name: isPlayer ? 'Вы' : '', col: colorsFor(id),
+      x: 0, y: 0, a: 0, ta: 0, cell: -1, speed: isPlayer ? PLAYER_SPEED : cfgD.speed,
+      path: [], pts: [], kills: 0, respawn: 0, homeDist: 0, ai: null
+    };
+  }
+
+  function newAI() {
+    var greed = MSX.randInt(cfgD.greed[0], cfgD.greed[1]);
+    return {
+      mode: 'home', outAngle: 0, sideAngle: 0, outLen: 6, sideLen: 6, steps: 0, target: 0,
+      think: 0, react: 0, scan: MSX.rand(0, 0.4), wobble: 0,
+      aggr: MSX.rand(cfgD.aggr[0], cfgD.aggr[1]),
+      caution: MSX.randInt(cfgD.caution[0], cfgD.caution[1]),
+      greed: greed, maxTrail: greed * 3 + 8
+    };
+  }
+
+  function placeAt(e, cell) {
+    var x = CXS[cell], y = CYS[cell];
+    for (var i = 0; i < N; i++) {
+      if (!valid[i]) { continue; }
+      var dx = CXS[i] - x, dy = CYS[i] - y;
+      if (dx * dx + dy * dy <= 3.6 * 3.6) { setOwner(i, e.id); }
+    }
+    e.x = x;
+    e.y = y;
+    e.cell = cell;
+    e.alive = true;
+    e.path = [];
+    e.pts = [];
+    e.homeDist = 0;
+    e.a = Math.atan2(CY - y, CX - x) + MSX.rand(-1, 1);
+    e.ta = e.a;
+    if (!e.isPlayer) {
+      e.ai = newAI();
+      e.speed = cfgD.speed * MSX.rand(0.96, 1.03);
+      planLoop(e);
+    }
+  }
+
+  function findSpawn() {
+    for (var t = 0; t < 200; t++) {
+      var i = MSX.randInt(0, N - 1);
+      if (!valid[i] || edgeDist(CXS[i], CYS[i]) < 8) { continue; }
+      var ok = true;
+      var x = CXS[i], y = CYS[i];
+      var r0 = Math.max(0, Math.floor(i / W) - 4), r1 = Math.min(H - 1, Math.floor(i / W) + 4);
+      var c0 = Math.max(0, i % W - 4), c1 = Math.min(W - 1, i % W + 4);
+      for (var r = r0; r <= r1 && ok; r++) {
+        for (var c = c0; c <= c1; c++) {
+          var j = r * W + c;
+          var dx = CXS[j] - x, dy = CYS[j] - y;
+          if (dx * dx + dy * dy <= 30 && (owner[j] || trail[j])) { ok = false; break; }
+        }
+      }
+      if (!ok) { continue; }
+      for (var k = 1; k < ents.length; k++) {
+        var o = ents[k];
+        if (o.alive && Math.abs(o.x - x) + Math.abs(o.y - y) < 22) { ok = false; break; }
+      }
+      if (ok) { return i; }
+    }
+    return -1;
+  }
+
+  function killEntity(v, killer, reason) {
+    if (!v.alive) { return; }
+    v.alive = false;
+    for (var p = 0; p < v.path.length; p++) { if (trail[v.path[p]] === v.id) { trail[v.path[p]] = 0; } }
+    v.path = [];
+    v.pts = [];
+    if (killer && killer !== v) {
+      killer.kills++;
+      if (killer.isPlayer) {
+        kills++;
+        G.toast('Срезан игрок ' + v.name, 1100);
+        addFeed('Вы срезали игрока ' + v.name, true);
+      } else if (v.isPlayer) {
+        addFeed(killer.name + ' срезал вас', true);
+      } else {
+        addFeed(killer.name + ' срезал игрока ' + v.name);
+      }
+    } else if (!v.isPlayer) {
+      addFeed('Игрок ' + v.name + ' разбился');
+    }
+    for (var i = 0; i < N; i++) { if (owner[i] === v.id) { setOwner(i, 0); } }
+    if (v.isPlayer) {
+      state = 'dying';
+      deathT = 1.3;
+      deathReason = reason || (killer && killer !== v ? 'Ваш след срезал игрок ' + killer.name + '.' : 'Вы пересекли собственный след.');
+    } else {
+      v.respawn = MSX.rand(2.5, 5);
+    }
+  }
+
+  function tryRespawn(e) {
+    var cell = findSpawn();
+    if (cell < 0) { e.respawn = 1; return; }
+    e.name = freeName();
+    e.kills = 0;
+    placeAt(e, cell);
+    addFeed('Игрок ' + e.name + ' в игре');
+  }
+
+  /* ---------------- захват ---------------- */
+
+  function claim(e) {
+    var id = e.id;
+    var minC = W, maxC = -1, minR = H, maxR = -1;
+    var i, c, r, k, n;
+    for (i = 0; i < N; i++) {
+      if (owner[i] === id || trail[i] === id) {
+        mark[i] = 1;
+        c = i % W;
+        r = (i - c) / W;
+        if (c < minC) { minC = c; }
+        if (c > maxC) { maxC = c; }
+        if (r < minR) { minR = r; }
+        if (r > maxR) { maxR = r; }
+      } else {
+        mark[i] = 0;
       }
     }
-  }
-
-  function startLevel(li) {
-    levelIndex = li;
-    stopLoop();
-    closeOverlay();
-    setScreen('game');
-    resize();
-
-    owner = new Uint8Array(GRID_W * GRID_H);
-    trailAt = new Uint8Array(GRID_W * GRID_H);
-    entities = [];
-
-    player = makeEntity(1, Math.floor(GRID_W / 2), Math.floor(GRID_H / 2), PLAYER_SPEED, true);
-    player.dx = 1;
-    player.dy = 0;
-    entities.push(player);
-    paintPatch(player);
-
-    var bots = cfg().bots;
-    for (var b = 0; b < bots; b++) {
-      var ang = (b / bots) * Math.PI * 2;
-      var bx = Math.round(GRID_W / 2 + Math.cos(ang) * GRID_W * 0.33);
-      var by = Math.round(GRID_H / 2 + Math.sin(ang) * GRID_H * 0.34);
-      bx = Math.max(4, Math.min(GRID_W - 5, bx));
-      by = Math.max(4, Math.min(GRID_H - 5, by));
-      var bot = makeEntity(b + 2, bx, by, rand(5.5, 7.0), false);
-      bot.dx = bx < GRID_W / 2 ? 1 : -1;
-      bot.dy = 0;
-      entities.push(bot);
-      paintPatch(bot);
+    var c0 = Math.max(0, minC - 1), c1 = Math.min(W - 1, maxC + 1);
+    var r0 = Math.max(0, minR - 1), r1 = Math.min(H - 1, maxR + 1);
+    var sp = 0;
+    function seed(j) { if (mark[j] === 0) { mark[j] = 2; stack[sp++] = j; } }
+    for (c = c0; c <= c1; c++) { seed(r0 * W + c); seed(r1 * W + c); }
+    for (r = r0; r <= r1; r++) { seed(r * W + c0); seed(r * W + c1); }
+    while (sp) {
+      i = stack[--sp];
+      for (k = 0; k < 6; k++) {
+        n = NB[i * 6 + k];
+        if (n < 0) { continue; }
+        c = n % W;
+        r = (n - c) / W;
+        if (c < c0 || c > c1 || r < r0 || r > r1) { continue; }
+        seed(n);
+      }
     }
-
-    camX = player.x - viewCellsX / 2;
-    camY = player.y - viewCellsY / 2;
-    landGained = 0;
-    flashText = '';
-    flashTimer = 0;
-    miniTimer = 0;
-
-    if (!minimap) {
-      minimap = document.createElement('canvas');
-      minimap.width = GRID_W;
-      minimap.height = GRID_H;
-      miniCtx = minimap.getContext('2d');
-      miniData = miniCtx.createImageData(GRID_W, GRID_H);
+    var before = counts[id];
+    for (r = r0; r <= r1; r++) {
+      for (c = c0; c <= c1; c++) {
+        i = r * W + c;
+        if (mark[i] === 0 && valid[i]) { setOwner(i, id); }
+      }
     }
-
-    updateHud();
-    updateMinimap();
-    state = 'playing';
-    draw();
-    startLoop();
-  }
-
-  function clearTrail(e) {
-    for (var i = 0; i < e.trail.length; i++) { trailAt[e.trail[i]] = 0; }
-    e.trail = [];
-  }
-
-  function transfer(fromId, toId) {
-    var total = GRID_W * GRID_H;
-    for (var i = 0; i < total; i++) {
-      if (owner[i] === fromId) { owner[i] = toId; }
+    for (var p = 0; p < e.path.length; p++) {
+      setOwner(e.path[p], id);
+      trail[e.path[p]] = 0;
     }
-  }
-
-  function floodClaim(e) {
-    var total = GRID_W * GRID_H;
-    var blocked = new Uint8Array(total);
-    var seen = new Uint8Array(total);
-    var i;
-    for (i = 0; i < e.trail.length; i++) { blocked[e.trail[i]] = 1; }
-    for (i = 0; i < total; i++) { if (owner[i] === e.id) { blocked[i] = 1; } }
-
-    var stack = [];
-    var x, y;
-    for (x = 0; x < GRID_W; x++) {
-      if (!blocked[idx(x, 0)]) { stack.push(idx(x, 0)); }
-      if (!blocked[idx(x, GRID_H - 1)]) { stack.push(idx(x, GRID_H - 1)); }
+    e.path = [];
+    e.pts = [];
+    var gained = counts[id] - before;
+    for (k = 1; k < ents.length; k++) {
+      var o = ents[k];
+      if (o !== e && o.alive && counts[o.id] === 0) { killEntity(o, e, 'Вашу территорию полностью захватили.'); }
     }
-    for (y = 0; y < GRID_H; y++) {
-      if (!blocked[idx(0, y)]) { stack.push(idx(0, y)); }
-      if (!blocked[idx(GRID_W - 1, y)]) { stack.push(idx(GRID_W - 1, y)); }
-    }
-
-    while (stack.length) {
-      i = stack.pop();
-      if (seen[i]) { continue; }
-      seen[i] = 1;
-      x = i % GRID_W;
-      y = (i - x) / GRID_W;
-      if (x > 0 && !blocked[i - 1] && !seen[i - 1]) { stack.push(i - 1); }
-      if (x < GRID_W - 1 && !blocked[i + 1] && !seen[i + 1]) { stack.push(i + 1); }
-      if (y > 0 && !blocked[i - GRID_W] && !seen[i - GRID_W]) { stack.push(i - GRID_W); }
-      if (y < GRID_H - 1 && !blocked[i + GRID_W] && !seen[i + GRID_W]) { stack.push(i + GRID_W); }
-    }
-
-    var gained = 0;
-    for (i = 0; i < total; i++) {
-      if (!blocked[i] && !seen[i] && owner[i] !== e.id) { owner[i] = e.id; gained++; }
-    }
-    for (i = 0; i < e.trail.length; i++) {
-      if (owner[e.trail[i]] !== e.id) { owner[e.trail[i]] = e.id; gained++; }
-      trailAt[e.trail[i]] = 0;
-    }
-    e.trail = [];
     return gained;
   }
 
-  function kill(victim, killer, reason) {
-    if (!victim || !victim.alive) { return; }
-    victim.alive = false;
-    clearTrail(victim);
-    if (killer && killer !== victim) {
-      transfer(victim.id, killer.id);
-      if (killer.isPlayer) {
-        landGained += 100;
-        flashText = 'Захват!';
-        flashTimer = 1;
-      }
-    } else if (!victim.isPlayer) {
-      transfer(victim.id, 0);
-    }
-
-    if (victim.isPlayer) {
-      stopLoop();
-      state = 'dead';
-      resultReason = reason || (killer === victim ? 'Вы перерезали свой собственный след.' : 'Соперник перерезал ваш след.');
-      draw();
-      showOverlay('lose', resultReason);
-      return;
-    }
-
-    var alive = 0;
-    for (var i = 1; i < entities.length; i++) { if (entities[i].alive) { alive++; } }
-    updateHud();
-    if (alive === 0) {
-      stopLoop();
-      state = 'won';
-      draw();
-      showOverlay('win');
-    }
-  }
-
-  function enterCell(e) {
-    var gx = Math.floor(e.x);
-    var gy = Math.floor(e.y);
-    if (!inBounds(gx, gy)) {
-      kill(e, e, 'Вы врезались в границу карты.');
-      return;
-    }
-    if (gx === e.tileX && gy === e.tileY) { return; }
-
-    var i = idx(gx, gy);
-    var t = trailAt[i];
+  function enterCell(e, c) {
+    e.cell = c;
+    var t = trail[c];
     if (t === e.id) {
-      kill(e, e, 'Вы врезались в собственный след.');
+      // повторный заход в только что пройденные клетки (на изгибе) прощаем
+      if (e.path.lastIndexOf(c) >= e.path.length - GRACE) { return; }
+      killEntity(e, e);
       return;
     }
-    if (t !== 0) {
-      var other = entities[t - 1];
-      if (other && other.alive) { kill(other, e); }
+    if (t) {
+      var v = ents[t];
+      if (v && v.alive) { killEntity(v, e); }
     }
-
-    e.tileX = gx;
-    e.tileY = gy;
-
-    if (owner[i] === e.id) {
-      if (e.trail.length) {
-        var gained = floodClaim(e);
-        if (e.isPlayer && gained > 0) {
-          landGained += gained;
-          flashText = '+' + gained;
-          flashTimer = 0.8;
-          updateHud();
-          if (landShare(1) > WIN_SHARE) {
-            stopLoop();
-            state = 'won';
-            draw();
-            showOverlay('win');
-            return;
-          }
-        }
+    if (owner[c] === e.id) {
+      if (e.path.length) {
+        var gained = claim(e);
+        if (e.isPlayer && gained > 0) { G.toast('+' + gained, 800); }
       }
-    } else if (t !== e.id) {
-      e.trail.push(i);
-      trailAt[i] = e.id;
+    } else {
+      trail[c] = e.id;
+      e.path.push(c);
+      e.pts.push({ x: e.x, y: e.y });
+      if (e.ai) { e.ai.steps++; }
     }
   }
 
-  function nearestOwnedDistance(id, x, y, maxRadius) {
-    for (var radius = 0; radius <= maxRadius; radius++) {
-      for (var dx = -radius; dx <= radius; dx++) {
-        var dy = radius - Math.abs(dx);
-        var nx = x + dx;
-        var ny = y + dy;
-        if (inBounds(nx, ny) && owner[idx(nx, ny)] === id) { return radius; }
-        if (dy > 0 && inBounds(nx, y - dy) && owner[idx(nx, y - dy)] === id) { return radius; }
+  function moveEntity(e, dt) {
+    var diff = angDiff(e.a, e.ta);
+    var maxT = TURN * dt;
+    e.a += diff > maxT ? maxT : (diff < -maxT ? -maxT : diff);
+    var dist = e.speed * dt;
+    var steps = Math.max(1, Math.ceil(dist / 0.4));
+    var d = dist / steps;
+    for (var s = 0; s < steps; s++) {
+      e.x += Math.cos(e.a) * d;
+      e.y += Math.sin(e.a) * d;
+      // стена арены: скользим вдоль неё
+      var dx = e.x - CX, dy = e.y - CY;
+      var rr = Math.sqrt(dx * dx + dy * dy);
+      var lim = RW - 1.2;
+      if (rr > lim) {
+        e.x = CX + dx / rr * lim;
+        e.y = CY + dy / rr * lim;
+        var radial = Math.atan2(dy, dx);
+        var t1 = radial + PI / 2, t2 = radial - PI / 2;
+        e.a = Math.abs(angDiff(e.a, t1)) < Math.abs(angDiff(e.a, t2)) ? t1 : t2;
+        if (Math.cos(angDiff(radial, e.ta)) > 0) { e.ta = e.a; }
+      }
+      var c = cellOf(e.x, e.y);
+      if (c >= 0 && c !== e.cell && valid[c]) {
+        enterCell(e, c);
+        if (!e.alive || state !== 'play') { return; }
       }
     }
-    return maxRadius + 1;
   }
 
-  function thinkBot(e, dt) {
-    e.think -= dt;
-    if (e.think > 0) { return; }
-    e.think = rand(0.08, 0.18);
+  /* ---------------- поиск пути ---------------- */
 
-    var dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
-    var best = null;
-    var bestScore = -1e9;
-    var returning = e.trail.length >= e.returnAt;
-    var currentHome = returning ? nearestOwnedDistance(e.id, e.tileX, e.tileY, 20) : 0;
-
-    for (var d = 0; d < dirs.length; d++) {
-      var dir = dirs[d];
-      if (dir.x === -e.dx && dir.y === -e.dy) { continue; }
-      var score = 0;
-      for (var s = 1; s <= 12; s++) {
-        var nx = e.tileX + dir.x * s;
-        var ny = e.tileY + dir.y * s;
-        if (!inBounds(nx, ny)) { score -= 260 + (12 - s) * 15; break; }
-        var ii = idx(nx, ny);
-        if (trailAt[ii] === e.id) { score -= 280; break; }
-        if (trailAt[ii] !== 0) {
-          score += 165 / s;
-          break;
+  // BFS по гексам от головы. goalType 0 — своя земля, 1 — след сущности gid. Возвращает путь (клетки) или null.
+  function bfsPath(e, goalType, gid, maxNodes) {
+    stamp++;
+    var start = e.cell;
+    if (start < 0) { return null; }
+    seen[start] = stamp;
+    par[start] = -1;
+    var qh = 0, qt = 0;
+    bq[qt++] = start;
+    while (qh < qt && qt < maxNodes) {
+      var i = bq[qh++];
+      for (var k = 0; k < 6; k++) {
+        var n = NB[i * 6 + k];
+        if (n < 0 || !valid[n] || seen[n] === stamp) { continue; }
+        if (trail[n] === e.id) { continue; }
+        seen[n] = stamp;
+        par[n] = i;
+        if (goalType === 0 ? owner[n] === gid : trail[n] === gid) {
+          var path = [];
+          for (var p = n; p !== start; p = par[p]) { path.push(p); }
+          path.reverse();
+          return path;
         }
-        if (owner[ii] === e.id) {
-          score -= s === 1 ? 5 : 1.5;
-          if (e.trail.length) { score += s === 1 ? 72 : 24 / s; }
-        } else {
-          score += (owner[ii] === 0 ? 5 : 2) / (1 + s * 0.08);
-        }
+        bq[qt++] = n;
       }
-      if (returning) {
-        var homeDistance = nearestOwnedDistance(e.id, e.tileX + dir.x, e.tileY + dir.y, 20);
-        score += (currentHome - homeDistance) * 24 - homeDistance * 0.8;
-        if (owner[idx(e.tileX + dir.x, e.tileY + dir.y)] === e.id) { score += 120; }
-      }
-      if (dir.x === e.dx && dir.y === e.dy) { score += 3; }
-      score += Math.random() * 1.5;
-      if (score > bestScore) { bestScore = score; best = dir; }
     }
-    if (best) { e.dx = best.x; e.dy = best.y; }
+    return null;
+  }
+
+  function ownTrailUnsafe(e, c) {
+    return trail[c] === e.id && e.path.lastIndexOf(c) < e.path.length - GRACE;
+  }
+
+  function segmentSafe(e, x1, y1) {
+    var dx = x1 - e.x, dy = y1 - e.y;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    var n = Math.max(1, Math.ceil(len / 0.35));
+    for (var s = 1; s <= n; s++) {
+      var c = cellOf(e.x + dx * s / n, e.y + dy * s / n);
+      if (c < 0 || !valid[c] || ownTrailUnsafe(e, c)) { return false; }
+    }
+    return true;
+  }
+
+  function headingSafe(e, ang) {
+    for (var dd = 0.8; dd <= 3.3; dd += 0.5) {
+      var x = e.x + Math.cos(ang) * dd, y = e.y + Math.sin(ang) * dd;
+      if (edgeDist(x, y) < 1.4) { return false; }
+      var c = cellOf(x, y);
+      if (c < 0 || !valid[c] || ownTrailUnsafe(e, c)) { return false; }
+    }
+    return true;
+  }
+
+  function aimAlong(e, path) {
+    for (var k = Math.min(2, path.length - 1); k >= 0; k--) {
+      var c = path[k];
+      if (k === 0 || segmentSafe(e, CXS[c], CYS[c])) { return Math.atan2(CYS[c] - e.y, CXS[c] - e.x); }
+    }
+    return e.a;
+  }
+
+  /* ---------------- ИИ ботов ---------------- */
+
+  function rayRoom(x, y, ang) {
+    var n = 0;
+    while (n < 30 && edgeDist(x + Math.cos(ang) * (n + 1), y + Math.sin(ang) * (n + 1)) > 2) { n++; }
+    return n;
+  }
+
+  function planLoop(e) {
+    var ai = e.ai;
+    var best = 0, bestScore = -1e9;
+    for (var k = 0; k < 12; k++) {
+      var ang = k * PI / 6;
+      var room = rayRoom(e.x, e.y, ang);
+      var score = Math.min(room, 22) * 0.4 + MSX.rand(0, 6);
+      if (room < 9) { score -= 40; }
+      for (var d = 3; d <= 17; d += 2) {
+        var c = cellOf(e.x + Math.cos(ang) * d, e.y + Math.sin(ang) * d);
+        if (c < 0 || !valid[c]) { break; }
+        var o = owner[c];
+        if (o !== e.id) { score += o === 0 ? 1.2 : 1.2 + ai.aggr * 1.5; }
+      }
+      if (Math.abs(angDiff(e.a, ang)) > 2.4) { score -= 3; }
+      if (score > bestScore) { bestScore = score; best = ang; }
+    }
+    ai.outAngle = best;
+    var turn = PI / 2 + MSX.rand(0, PI / 5);
+    var s1 = best + turn, s2 = best - turn;
+    var r1 = rayRoom(e.x, e.y, s1) + MSX.rand(0, 8);
+    var r2 = rayRoom(e.x, e.y, s2) + MSX.rand(0, 8);
+    ai.sideAngle = r1 >= r2 ? s1 : s2;
+    ai.outLen = MSX.randInt(Math.max(2, Math.round(ai.greed * 0.4)), ai.greed);
+    ai.sideLen = MSX.randInt(Math.max(2, Math.round(ai.greed * 0.5)), Math.round(ai.greed * 1.2));
+    ai.mode = 'home';
+    ai.steps = 0;
+  }
+
+  function trailDistance(o, e) {
+    var dx = o.x - e.x, dy = o.y - e.y;
+    var dm = dx * dx + dy * dy;
+    for (var k = 0; k < e.pts.length; k++) {
+      dx = o.x - e.pts[k].x;
+      dy = o.y - e.pts[k].y;
+      var dd = dx * dx + dy * dy;
+      if (dd < dm) { dm = dd; }
+    }
+    return Math.sqrt(dm) / SQ3;     // в гексах
+  }
+
+  function inDanger(e) {
+    var limit = e.homeDist + e.ai.caution + 1.5;
+    for (var k = 1; k < ents.length; k++) {
+      var o = ents[k];
+      if (o === e || !o.alive) { continue; }
+      if (trailDistance(o, e) <= limit) { return true; }
+    }
+    return false;
+  }
+
+  function findPrey(e) {
+    var ai = e.ai;
+    if (Math.random() > ai.aggr) { return null; }
+    if (e.path.length > ai.maxTrail * 0.5) { return null; }
+    var range = 7 + ai.aggr * 15;
+    var best = null, bestD = 1e9;
+    for (var k = 1; k < ents.length; k++) {
+      var o = ents[k];
+      if (o === e || !o.alive || o.path.length < 3) { continue; }
+      var myD = 1e9;
+      for (var p = 0; p < o.pts.length; p++) {
+        var dx = e.x - o.pts[p].x, dy = e.y - o.pts[p].y;
+        var dd = Math.sqrt(dx * dx + dy * dy) / SQ3;
+        if (dd < myD) { myD = dd; }
+      }
+      var bonus = o.isPlayer ? 2 : 0;
+      if (myD > range + bonus) { continue; }
+      if (myD + 1.5 < o.homeDist + bonus && myD < bestD) { best = o; bestD = myD; }
+    }
+    return best;
+  }
+
+  function botThink(e, dt) {
+    var ai = e.ai;
+    ai.think -= dt;
+    ai.react -= dt;
+    ai.scan -= dt;
+    if (ai.think > 0) { return; }
+    ai.think = MSX.rand(0.08, 0.13);
+
+    var home = owner[e.cell] === e.id;
+    var homePath = null;
+    if (e.path.length) {
+      homePath = bfsPath(e, 0, e.id, 2500);
+      e.homeDist = homePath ? homePath.length : 60;
+    } else {
+      e.homeDist = 0;
+    }
+
+    if (home && !e.path.length && ai.mode !== 'home' && ai.mode !== 'hunt') { planLoop(e); }
+
+    // опасность — с задержкой реакции, как у живого игрока
+    if (e.path.length && ai.mode !== 'return' && ai.react <= 0) {
+      ai.react = cfgD.react * MSX.rand(0.7, 1.3);
+      if (Math.random() >= cfgD.ignore && inDanger(e)) { ai.mode = 'return'; }
+    }
+    if (e.path.length > ai.maxTrail) { ai.mode = 'return'; }
+    if (e.path.length && edgeDist(e.x, e.y) < 4 && (ai.mode === 'out' || ai.mode === 'side')) { ai.mode = 'return'; }
+
+    // охота за чужим следом
+    if ((ai.mode === 'home' || ai.mode === 'out' || ai.mode === 'side') && ai.scan <= 0) {
+      ai.scan = 0.3;
+      var prey = findPrey(e);
+      if (prey) { ai.mode = 'hunt'; ai.target = prey.id; }
+    }
+
+    if (ai.mode === 'home' && !home) { ai.mode = 'out'; ai.steps = 0; }
+    if (ai.mode === 'out' && ai.steps >= ai.outLen) { ai.mode = 'side'; ai.steps = 0; }
+    if (ai.mode === 'side' && ai.steps >= ai.sideLen) { ai.mode = 'return'; }
+
+    var ta = e.ta;
+    if (ai.mode === 'hunt') {
+      var t = ents[ai.target];
+      var hp = t && t.alive && t.path.length ? bfsPath(e, 1, t.id, 1800) : null;
+      if (!hp || hp.length > t.homeDist + 2 || (e.path.length && inDanger(e))) {
+        if (e.path.length) { ai.mode = 'return'; } else { planLoop(e); }
+      } else {
+        ta = aimAlong(e, hp);
+      }
+    }
+    if (ai.mode === 'return') {
+      if (!e.path.length && home) {
+        planLoop(e);
+      } else if (homePath && homePath.length) {
+        ta = aimAlong(e, homePath);
+      }
+    }
+    if (ai.mode === 'home' || ai.mode === 'out' || ai.mode === 'side') {
+      if (Math.random() < 0.15) { ai.wobble = MSX.rand(-0.25, 0.25); }
+      ta = (ai.mode === 'side' ? ai.sideAngle : ai.outAngle) + ai.wobble;
+      if (!headingSafe(e, ta)) {
+        if (ai.mode === 'home') { planLoop(e); ta = ai.outAngle; }
+        else if (homePath && homePath.length) { ai.mode = 'return'; ta = aimAlong(e, homePath); }
+      }
+    }
+    if (!headingSafe(e, ta) && homePath && homePath.length && ai.mode !== 'return') {
+      ta = aimAlong(e, homePath);
+    }
+    e.ta = ta;
+  }
+
+  /* ---------------- игрок ---------------- */
+
+  function setPlayerDir(idx8) {
+    player.ta = idx8 * PI / 4;
+    started = true;
+  }
+
+  function playerKey(k) {
+    if (!player.alive || state !== 'play') { return; }
+    if (steer === 'turn') {
+      if (k === 'left') { player.ta -= PI / 4; started = true; }
+      else if (k === 'right') { player.ta += PI / 4; started = true; }
+      else if (DIGIT_DIR[k] !== undefined) { setPlayerDir(DIGIT_DIR[k]); }
+      return;
+    }
+    if (DIGIT_DIR[k] !== undefined) { setPlayerDir(DIGIT_DIR[k]); return; }
+    var d = ARROW_DIR[k];
+    if (d === undefined) { return; }
+    // две соседние стрелки быстро подряд — диагональ
+    var now = MSX.now();
+    if (lastPress && now - lastPress.t < 230 && (d - lastPress.d + 8) % 8 !== 0 && (d - lastPress.d + 8) % 4 === 2) {
+      var a = lastPress.d, b = d;
+      var mid = ((a + b) / 2) % 8;
+      if (Math.abs(a - b) === 6) { mid = 7; }
+      setPlayerDir(mid);
+      lastPress = null;
+      return;
+    }
+    lastPress = { d: d, t: now };
+    setPlayerDir(d);
+  }
+
+  /* ---------------- цикл ---------------- */
+
+  function rankOf(e) {
+    var r = 1;
+    for (var k = 1; k < ents.length; k++) {
+      if (ents[k] !== e && ents[k].alive && counts[ents[k].id] > counts[e.id]) { r++; }
+    }
+    return r;
+  }
+
+  function countAlive() {
+    var n = 0;
+    for (var k = 1; k < ents.length; k++) { if (ents[k].alive) { n++; } }
+    return n;
+  }
+
+  function updateHud() {
+    var s = share(player);
+    if (s > maxShare) { maxShare = s; }
+    if (maxShare > best) {
+      best = maxShare;
+      newBest = true;
+      MSX.store.set('territory.best', best);
+    }
+    G.hud('land', (s * 100).toFixed(1) + '%');
+    G.hud('kills', kills);
+    G.hud('rank', player.alive ? rankOf(player) + ' / ' + countAlive() : '—');
+    G.hud('best', (best * 100).toFixed(1) + '%');
+  }
+
+  function finishGame(won) {
+    updateHud();
+    G.finish({
+      title: won ? 'Победа!' : 'Вас срезали',
+      text: won ? 'Вы захватили половину арены.' : deathReason,
+      stats: [
+        ['Максимум территории', (maxShare * 100).toFixed(1) + '%', newBest],
+        ['Срезано соперников', kills],
+        ['Время', MSX.fmtTime(time)],
+        ['Рекорд', (best * 100).toFixed(1) + '%']
+      ]
+    });
   }
 
   function update(dt) {
-    if (state !== 'playing') { return; }
-    for (var i = 0; i < entities.length; i++) {
-      var e = entities[i];
-      if (!e.alive) { continue; }
-      if (!e.isPlayer) { thinkBot(e, dt); }
-      e.x += e.dx * e.speed * dt;
-      e.y += e.dy * e.speed * dt;
-      enterCell(e);
-      if (state !== 'playing') { return; }
+    if (state === 'dying') {
+      deathT -= dt;
+      if (deathT <= 0) { state = 'over'; finishGame(false); }
+      return;
+    }
+    if (state !== 'play') { return; }
+    if (started) { time += dt; }
+
+    if (started) {
+      moveEntity(player, dt);
+      if (state !== 'play') { return; }
+      if (player.path.length) {
+        playerHomeT -= dt;
+        if (playerHomeT <= 0) {
+          playerHomeT = 0.2;
+          var p = bfsPath(player, 0, player.id, 2500);
+          player.homeDist = p ? p.length : 60;
+        }
+      } else {
+        player.homeDist = 0;
+      }
     }
 
-    var targetX = player.x - viewCellsX / 2;
-    var targetY = player.y - viewCellsY / 2;
-    camX += (targetX - camX) * Math.min(1, dt * 8);
-    camY += (targetY - camY) * Math.min(1, dt * 8);
-    camX = Math.max(0, Math.min(GRID_W - viewCellsX, camX));
-    camY = Math.max(0, Math.min(GRID_H - viewCellsY, camY));
-    if (GRID_W < viewCellsX) { camX = (GRID_W - viewCellsX) / 2; }
-    if (GRID_H < viewCellsY) { camY = (GRID_H - viewCellsY) / 2; }
-
-    if (flashTimer > 0) { flashTimer -= dt; }
-    miniTimer -= dt;
-    if (miniTimer <= 0) { miniTimer = 0.25; updateMinimap(); updateHud(); }
-  }
-
-  function colorFor(id) {
-    if (id === 0) { return 'rgba(255,255,255,.03)'; }
-    return COLORS[id % COLORS.length];
-  }
-
-  function updateMinimap() {
-    if (!miniData) { return; }
-    var data = miniData.data;
-    for (var i = 0; i < GRID_W * GRID_H; i++) {
-      var o = owner[i];
-      var t = trailAt[i];
-      var r, g, b;
-      if (t !== 0) {
-        r = 255; g = 255; b = 255;
-      } else if (o === 0) {
-        r = 18; g = 24; b = 32;
-      } else {
-        var hex = COLORS[o % COLORS.length];
-        r = parseInt(hex.slice(1, 3), 16);
-        g = parseInt(hex.slice(3, 5), 16);
-        b = parseInt(hex.slice(5, 7), 16);
+    var order = [];
+    for (var j = 2; j < ents.length; j++) { order.push(j); }
+    MSX.shuffle(order);
+    for (var o = 0; o < order.length; o++) {
+      var b = ents[order[o]];
+      if (!b.alive) {
+        b.respawn -= dt;
+        if (b.respawn <= 0) { tryRespawn(b); }
+        continue;
       }
+      botThink(b, dt);
+      moveEntity(b, dt);
+      if (state !== 'play') { return; }
+    }
+
+    for (var f = feed.length - 1; f >= 0; f--) {
+      feed[f].t -= dt;
+      if (feed[f].t <= 0) { feed.splice(f, 1); }
+    }
+    miniTimer -= dt;
+    if (miniTimer <= 0) { miniTimer = 0.35; updateMini(); }
+    hudTimer -= dt;
+    if (hudTimer <= 0) {
+      hudTimer = 0.25;
+      updateHud();
+      if (share(player) >= WIN_SHARE) { state = 'over'; finishGame(true); }
+    }
+  }
+
+  /* ---------------- отрисовка ---------------- */
+
+  function resize(w, h) {
+    cam.S = Math.max(6, h / VIEW_UNITS);
+  }
+
+  function updateCamera(snap) {
+    var vw = view.w / cam.S, vh = view.h / cam.S;
+    var tx = player.x - vw / 2, ty = player.y - vh / 2;
+    if (snap) { cam.x = tx; cam.y = ty; return; }
+    cam.x += (tx - cam.x) * 0.16;
+    cam.y += (ty - cam.y) * 0.16;
+  }
+
+  function updateMini() {
+    var data = miniData.data;
+    for (var i = 0; i < N; i++) {
       var p = i * 4;
-      data[p] = r;
-      data[p + 1] = g;
-      data[p + 2] = b;
-      data[p + 3] = 255;
+      if (!valid[i]) { data[p + 3] = 0; continue; }
+      var t = trail[i], o = owner[i];
+      var c = t ? ents[t].col.rgb : (o ? ents[o].col.topRgb : BG);
+      data[p] = c[0]; data[p + 1] = c[1]; data[p + 2] = c[2]; data[p + 3] = 255;
     }
     miniCtx.putImageData(miniData, 0, 0);
   }
 
+  function hexAt(ctx, i, r, dy) {
+    var S = cam.S;
+    var sx = (CXS[i] - cam.x) * S, sy = (CYS[i] - cam.y) * S + dy;
+    var rr = r * S;
+    ctx.moveTo(sx + HX[0] * rr, sy + HY[0] * rr);
+    for (var k = 1; k < 6; k++) { ctx.lineTo(sx + HX[k] * rr, sy + HY[k] * rr); }
+    ctx.closePath();
+  }
+
   function draw() {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!owner || !player) { return; }
-    ctx.setTransform(k, 0, 0, k, 0, 0);
+    var ctx = view.ctx;
+    var vw = view.w, vh = view.h;
+    updateCamera(false);
+    var S = cam.S;
 
-    ctx.fillStyle = '#080d12';
-    ctx.fillRect(0, 0, viewW, WORLD_H);
+    ctx.fillStyle = '#05080d';
+    ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = '#0a0f17';
+    ctx.beginPath();
+    ctx.arc((CX - cam.x) * S, (CY - cam.y) * S, (RW + 1) * S, 0, TAU);
+    ctx.fill();
 
-    var x0 = Math.max(0, Math.floor(camX) - 1);
-    var y0 = Math.max(0, Math.floor(camY) - 1);
-    var x1 = Math.min(GRID_W - 1, Math.ceil(camX + viewCellsX) + 1);
-    var y1 = Math.min(GRID_H - 1, Math.ceil(camY + viewCellsY) + 1);
-    var cell = CELL;
+    var r0 = Math.max(0, Math.floor(cam.y / 1.5) - 2);
+    var r1 = Math.min(H - 1, Math.ceil((cam.y + vh / S) / 1.5) + 2);
+    var c0 = Math.max(0, Math.floor(cam.x / SQ3) - 2);
+    var c1 = Math.min(W - 1, Math.ceil((cam.x + vw / S) / SQ3) + 2);
+    var r, c, i, o;
 
-    var gx, gy, i, px, py;
-    ctx.globalAlpha = 0.34;
-    for (gy = y0; gy <= y1; gy++) {
-      for (gx = x0; gx <= x1; gx++) {
-        i = idx(gx, gy);
-        if (owner[i] === 0) { continue; }
-        ctx.fillStyle = colorFor(owner[i]);
-        px = (gx - camX) * cell;
-        py = (gy - camY) * cell;
-        ctx.fillRect(px, py, cell + 0.6, cell + 0.6);
+    // нейтральные гексы
+    ctx.fillStyle = css(BG);
+    ctx.beginPath();
+    for (r = r0; r <= r1; r++) {
+      for (c = c0; c <= c1; c++) {
+        i = r * W + c;
+        if (valid[i] && !owner[i]) { hexAt(ctx, i, 0.9, 0); }
       }
+    }
+    ctx.fill();
+
+    // территории: сначала «бока», потом верх — объёмный вид
+    var groups = {};
+    var ids = [];
+    for (r = r0; r <= r1; r++) {
+      for (c = c0; c <= c1; c++) {
+        i = r * W + c;
+        o = owner[i];
+        if (!o) { continue; }
+        if (!groups[o]) { groups[o] = []; ids.push(o); }
+        groups[o].push(i);
+      }
+    }
+    var depth = S * 0.32;
+    var g, list, k;
+    for (g = 0; g < ids.length; g++) {
+      list = groups[ids[g]];
+      ctx.fillStyle = ents[ids[g]].col.side;
+      ctx.beginPath();
+      for (k = 0; k < list.length; k++) { hexAt(ctx, list[k], 0.98, depth); }
+      ctx.fill();
+    }
+    for (g = 0; g < ids.length; g++) {
+      list = groups[ids[g]];
+      ctx.fillStyle = ents[ids[g]].col.top;
+      ctx.beginPath();
+      for (k = 0; k < list.length; k++) { hexAt(ctx, list[k], 0.98, 0); }
+      ctx.fill();
+    }
+
+    // следы-гексы
+    var tg = {};
+    var tids = [];
+    for (r = r0; r <= r1; r++) {
+      for (c = c0; c <= c1; c++) {
+        i = r * W + c;
+        o = trail[i];
+        if (!o) { continue; }
+        if (!tg[o]) { tg[o] = []; tids.push(o); }
+        tg[o].push(i);
+      }
+    }
+    for (g = 0; g < tids.length; g++) {
+      list = tg[tids[g]];
+      ctx.fillStyle = ents[tids[g]].col.trail;
+      ctx.beginPath();
+      for (k = 0; k < list.length; k++) { hexAt(ctx, list[k], 0.8, 0); }
+      ctx.fill();
+    }
+
+    // линии следа
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, S * 0.26);
+    for (var n = 1; n < ents.length; n++) {
+      var e = ents[n];
+      if (!e.alive || !e.pts.length) { continue; }
+      ctx.strokeStyle = e.col.line;
+      ctx.beginPath();
+      ctx.moveTo((e.pts[0].x - cam.x) * S, (e.pts[0].y - cam.y) * S);
+      for (k = 1; k < e.pts.length; k++) { ctx.lineTo((e.pts[k].x - cam.x) * S, (e.pts[k].y - cam.y) * S); }
+      ctx.lineTo((e.x - cam.x) * S, (e.y - cam.y) * S);
+      ctx.stroke();
+    }
+
+    // граница арены
+    ctx.strokeStyle = 'rgba(255,255,255,.18)';
+    ctx.lineWidth = Math.max(2, S * 0.15);
+    ctx.beginPath();
+    ctx.arc((CX - cam.x) * S, (CY - cam.y) * S, (RW + 0.9) * S, 0, TAU);
+    ctx.stroke();
+
+    // игроки
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '700 ' + Math.round(Math.max(11, S * 0.75)) + 'px sans-serif';
+    for (n = 1; n < ents.length; n++) {
+      e = ents[n];
+      if (!e.alive) { continue; }
+      var px = (e.x - cam.x) * S, py = (e.y - cam.y) * S;
+      if (px < -S * 4 || py < -S * 4 || px > vw + S * 4 || py > vh + S * 4) { continue; }
+      var rad = S * 0.95;
+      ctx.save();
+      ctx.shadowColor = e.col.base;
+      ctx.shadowBlur = e.isPlayer ? S * 1.2 : S * 0.6;
+      ctx.fillStyle = e.col.dark;
+      ctx.beginPath(); ctx.arc(px, py + S * 0.18, rad, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = e.col.base;
+      ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
+      ctx.lineWidth = Math.max(2, S * 0.14);
+      ctx.strokeStyle = e.isPlayer ? '#fff' : 'rgba(255,255,255,.55)';
+      ctx.stroke();
+      var fx = Math.cos(e.a), fy = Math.sin(e.a);
+      for (var side = -1; side <= 1; side += 2) {
+        var ex = px + fx * rad * 0.3 - fy * side * rad * 0.36;
+        var ey = py + fy * rad * 0.3 + fx * side * rad * 0.36;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(ex, ey, rad * 0.26, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#0b1118';
+        ctx.beginPath(); ctx.arc(ex + fx * rad * 0.1, ey + fy * rad * 0.1, rad * 0.13, 0, TAU); ctx.fill();
+      }
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,.7)';
+      ctx.strokeText(e.name, px, py - rad - S * 0.2);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(e.name, px, py - rad - S * 0.2);
+    }
+    ctx.textBaseline = 'alphabetic';
+
+    drawUi(ctx, vw, vh);
+
+    if (state === 'dying') {
+      ctx.fillStyle = 'rgba(220,38,38,' + (0.35 * deathT / 1.3) + ')';
+      ctx.fillRect(0, 0, vw, vh);
+    }
+  }
+
+  function drawUi(ctx, vw, vh) {
+    var fs = Math.max(12, Math.round(vh / 42));
+    var pad = fs * 0.8;
+
+    // таблица лидеров
+    var list = [];
+    for (var k = 1; k < ents.length; k++) { if (ents[k].alive) { list.push(ents[k]); } }
+    list.sort(function (a, b) { return counts[b.id] - counts[a.id]; });
+    var rows = list.slice(0, 5);
+    var pr = rankOf(player);
+    if (player.alive && pr > 5) { rows.push(player); }
+    var lw = fs * 13, lh = fs * 1.45;
+    var lx = vw - lw - pad, ly = pad;
+    ctx.fillStyle = 'rgba(4,7,11,.6)';
+    MSX.rrect(ctx, lx, ly, lw, lh * rows.length + fs * 0.8, fs * 0.6);
+    ctx.fill();
+    ctx.font = '600 ' + fs + 'px sans-serif';
+    for (var r = 0; r < rows.length; r++) {
+      var e = rows[r];
+      var place = e === player ? pr : r + 1;
+      var yy = ly + fs * 0.4 + lh * (r + 0.72);
+      ctx.fillStyle = e.col.base;
+      ctx.beginPath();
+      ctx.arc(lx + fs * 0.85, yy - fs * 0.36, fs * 0.32, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = e === player ? '#fff' : 'rgba(255,255,255,.78)';
+      ctx.textAlign = 'left';
+      ctx.fillText(place + '. ' + e.name, lx + fs * 1.5, yy);
+      ctx.textAlign = 'right';
+      ctx.fillText((share(e) * 100).toFixed(1) + '%', lx + lw - fs * 0.6, yy);
+    }
+
+    // лента событий
+    ctx.textAlign = 'left';
+    ctx.font = Math.round(fs * 0.92) + 'px sans-serif';
+    for (var f = 0; f < feed.length; f++) {
+      ctx.globalAlpha = Math.min(1, feed[f].t);
+      ctx.fillStyle = 'rgba(4,7,11,.55)';
+      var tw = ctx.measureText(feed[f].text).width;
+      ctx.fillRect(pad, pad + f * fs * 1.6, tw + fs, fs * 1.35);
+      ctx.fillStyle = feed[f].hi ? '#fbbf24' : 'rgba(255,255,255,.85)';
+      ctx.fillText(feed[f].text, pad + fs * 0.5, pad + f * fs * 1.6 + fs * 1.0);
     }
     ctx.globalAlpha = 1;
 
-    for (gy = y0; gy <= y1; gy++) {
-      for (gx = x0; gx <= x1; gx++) {
-        i = idx(gx, gy);
-        if (trailAt[i] === 0) { continue; }
-        ctx.fillStyle = COLORS[trailAt[i] % COLORS.length];
-        px = (gx - camX) * cell;
-        py = (gy - camY) * cell;
-        ctx.fillRect(px + 3, py + 3, cell - 6, cell - 6);
-      }
-    }
+    // круглая мини-карта
+    var md = Math.round(fs * 9);
+    var mx = vw - md - pad, my = vh - md - pad;
+    var mcx = mx + md / 2, mcy = my + md / 2;
+    ctx.fillStyle = 'rgba(4,7,11,.65)';
+    ctx.beginPath(); ctx.arc(mcx, mcy, md / 2 + 4, 0, TAU); ctx.fill();
+    var scale = md / (2 * RW + 2);
+    var ox = mcx - CX * scale, oy = mcy - CY * scale;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(mcx, mcy, md / 2, 0, TAU); ctx.clip();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(mini, ox, oy, W * SQ3 * scale, H * 1.5 * scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.restore();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ox + player.x * scale, oy + player.y * scale, Math.max(2.5, fs * 0.24), 0, TAU);
+    ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255,255,255,.12)';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-camX * cell, -camY * cell, GRID_W * cell, GRID_H * cell);
-
-    for (i = 0; i < entities.length; i++) {
-      var e = entities[i];
-      if (!e.alive) { continue; }
-      px = (e.x - camX) * cell;
-      py = (e.y - camY) * cell;
-      ctx.fillStyle = e.color;
-      ctx.beginPath();
-      ctx.arc(px, py, cell * (e.isPlayer ? 0.62 : 0.5), 0, Math.PI * 2);
+    // прогресс к победе
+    var bw = Math.min(vw * 0.36, fs * 22), bh = fs * 0.55;
+    var bx = (vw - bw) / 2, by = vh - pad - bh;
+    var sh = Math.min(1, share(player) / WIN_SHARE);
+    ctx.fillStyle = 'rgba(255,255,255,.1)';
+    MSX.rrect(ctx, bx, by, bw, bh, bh / 2);
+    ctx.fill();
+    if (sh > 0) {
+      ctx.fillStyle = player.col.base;
+      MSX.rrect(ctx, bx, by, Math.max(bh, bw * sh), bh, bh / 2);
       ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.beginPath();
-      ctx.arc(px + e.dx * cell * 0.3, py + e.dy * cell * 0.3, cell * 0.18, 0, Math.PI * 2);
-      ctx.fill();
-      if (e.isPlayer) {
-        ctx.strokeStyle = 'rgba(255,255,255,.8)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(px, py, cell * 0.78, 0, Math.PI * 2);
-        ctx.stroke();
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.font = Math.round(fs * 0.9) + 'px sans-serif';
+    ctx.fillText('Ваша земля ' + (share(player) * 100).toFixed(1) + '%  ·  цель ' + Math.round(WIN_SHARE * 100) + '%', vw / 2, by - fs * 0.45);
+
+    if (!started && state === 'play') {
+      ctx.font = '600 ' + Math.round(fs * 1.5) + 'px sans-serif';
+      ctx.fillStyle = 'rgba(4,7,11,.6)';
+      var msg = steer === 'turn' ? 'Нажмите ◀ или ▶, чтобы начать' : 'Нажмите стрелку, чтобы начать';
+      var mwid = ctx.measureText(msg).width;
+      ctx.fillRect(vw / 2 - mwid / 2 - fs, vh * 0.3 - fs * 1.4, mwid + fs * 2, fs * 2.2);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(msg, vw / 2, vh * 0.3);
+    }
+    ctx.textAlign = 'left';
+  }
+
+  /* ---------------- движок ---------------- */
+
+  G = MSX.game({
+    id: 'territory',
+    title: 'Территория',
+    continuous: true,
+    options: [
+      { key: 'map', label: 'Арена', values: [{ value: 'm', label: 'Средняя' }, { value: 'l', label: 'Большая' }, { value: 'xl', label: 'Огромная' }], def: 'l' },
+      { key: 'bots', label: 'Соперники', values: [{ value: 5, label: '5' }, { value: 8, label: '8' }, { value: 12, label: '12' }], def: 8 },
+      { key: 'diff', label: 'Боты', values: [{ value: 'easy', label: 'Новички' }, { value: 'normal', label: 'Опытные' }, { value: 'smart', label: 'Умные' }], def: 'normal' },
+      { key: 'steer', label: 'Управление', values: [{ value: 'abs', label: 'Стрелки — направление' }, { value: 'turn', label: '◀ ▶ — поворот' }], def: 'abs' }
+    ],
+    hud: [
+      { key: 'land', label: 'Земля', value: '0%' },
+      { key: 'kills', label: 'Срезано' },
+      { key: 'rank', label: 'Место', value: '—' },
+      { key: 'best', label: 'Рекорд', value: '0%' }
+    ],
+    info: function () {
+      var b = MSX.store.get('territory.best', 0);
+      return b ? 'Рекорд: ' + (b * 100).toFixed(1) + '% арены' : 'Обводите гексы и забирайте землю себе';
+    },
+    start: function (s) {
+      view = G.canvas();
+      cfgD = DIFF[s.diff];
+      steer = s.steer;
+      G.hints(steer === 'turn'
+        ? [['◀ ▶', 'поворот на 45°'], ['1–9', 'направление по компасу'], ['OK / BACK', 'пауза']]
+        : [['◀ ▲ ▼ ▶', 'направление'], ['две стрелки быстро', 'диагональ'], ['1–9', 'компас'], ['OK / BACK', 'пауза']]);
+      buildGrid(MAPS[s.map]);
+      owner = new Uint8Array(N);
+      trail = new Uint8Array(N);
+      counts = new Int32Array(256);
+      mark = new Uint8Array(N);
+      stack = new Int32Array(N);
+      seen = new Int32Array(N);
+      par = new Int32Array(N);
+      bq = new Int32Array(N);
+      stamp = 0;
+
+      ents = [null];
+      player = newEntity(1, true);
+      ents.push(player);
+      placeAt(player, cellOf(CX, CY));
+      player.a = player.ta = -PI / 2;
+      for (var b = 0; b < s.bots; b++) {
+        var bot = newEntity(b + 2, false);
+        ents.push(bot);
+        var cell = findSpawn();
+        if (cell >= 0) {
+          bot.name = freeName();
+          placeAt(bot, cell);
+        } else {
+          bot.respawn = 1;
+        }
       }
+
+      state = 'play';
+      started = false;
+      lastPress = null;
+      time = 0;
+      kills = 0;
+      maxShare = 0;
+      playerHomeT = 0;
+      best = MSX.store.get('territory.best', 0);
+      newBest = false;
+      feed = [];
+      miniTimer = 0;
+      hudTimer = 0;
+
+      mini = document.createElement('canvas');
+      mini.width = W;
+      mini.height = H;
+      miniCtx = mini.getContext('2d');
+      miniData = miniCtx.createImageData(W, H);
+      updateMini();
+
+      resize(view.w, view.h);
+      updateCamera(true);
+      updateHud();
+    },
+    resize: function (w, h) {
+      resize(w, h);
+      if (player) { updateCamera(true); }
+    },
+    update: update,
+    draw: draw,
+    key: function (k, rep) {
+      if (k === 'ok') { if (!rep) { G.pause(); } return true; }
+      if (k === 'back') { return false; }
+      if (!rep || steer !== 'turn') { playerKey(k); }
+      return true;
     }
-
-    if (minimap) {
-      var mmW = 150;
-      var mmH = mmW * GRID_H / GRID_W;
-      ctx.globalAlpha = 0.92;
-      ctx.drawImage(minimap, viewW - mmW - 14, 14, mmW, mmH);
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = 'rgba(255,255,255,.2)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(viewW - mmW - 14, 14, mmW, mmH);
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,.55)';
-    ctx.font = '17px sans-serif';
-    ctx.fillText('ваша земля: ' + Math.round(shareCache * 100) + '%  ·  цель ' + Math.round(WIN_SHARE * 100) + '%', 18, WORLD_H - 16);
-
-    if (flashTimer > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, flashTimer) + ')';
-      ctx.font = '32px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(flashText, viewW / 2, 70);
-      ctx.textAlign = 'left';
-    }
-  }
-
-  function frame(ts) {
-    if (state !== 'playing') { return; }
-    var now = (typeof ts === 'number') ? ts : nowMs();
-    var dt = (now - lastTime) / 1000;
-    if (!isFinite(dt) || dt < 0) { dt = 0; }
-    if (dt > 0.05) { dt = 0.05; }
-    lastTime = now;
-    update(dt);
-    draw();
-    rafId = window.requestAnimationFrame(frame);
-  }
-
-  function startLoop() {
-    stopLoop();
-    lastTime = nowMs();
-    rafId = window.requestAnimationFrame(frame);
-  }
-
-  function stopLoop() {
-    if (rafId !== null) {
-      window.cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-  }
-
-  function buildOverlayList(items) {
-    ovList.innerHTML = '';
-    for (var i = 0; i < items.length; i++) {
-      ovList.appendChild(buildMenuItem(items[i].label, null));
-    }
-    selectOverlay(ovIndex);
-  }
-
-  function selectOverlay(i) {
-    for (var n = 0; n < ovList.children.length; n++) {
-      ovList.children[n].classList.toggle('sel', n === i);
-    }
-  }
-
-  function showOverlay(type, reason) {
-    var title = 'Пауза';
-    var text = 'Игра приостановлена.';
-    var items = [
-      { label: 'Продолжить', run: resume },
-      { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Выход', run: exitApp }
-    ];
-    if (type === 'lose') {
-      title = 'Вас перерезали';
-      text = (reason || '') + ' Земля: ' + Math.round(landShare(1) * 100) + '%.';
-      items = [
-        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Выход', run: exitApp }
-      ];
-    } else if (type === 'win') {
-      title = 'Победа';
-      text = 'Вы забрали ' + Math.round(landShare(1) * 100) + '% карты. Захвачено зон: ' + landGained + '.';
-      items = [
-        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Выход', run: exitApp }
-      ];
-    }
-    overlayOpen = true;
-    ovIndex = 0;
-    ovItems = items;
-    ovTitle.textContent = title;
-    ovText.textContent = text;
-    buildOverlayList(items);
-    overlay.classList.add('show');
-  }
-
-  function closeOverlay() {
-    overlayOpen = false;
-    overlay.classList.remove('show');
-  }
-
-  function resume() {
-    closeOverlay();
-    if (state === 'playing') { startLoop(); }
-  }
-
-  function activateMenu() {
-    if (menuIndex === 0) { startLevel(0); }
-    else { exitApp(); }
-  }
-
-  function exitApp() {
-    location.href = '../index.html';
-  }
-
-  function moveOverlay(d) {
-    var n = ovItems.length;
-    if (!n) { return; }
-    ovIndex = (ovIndex + d + n) % n;
-    selectOverlay(ovIndex);
-  }
-
-  function activateOverlay() {
-    var item = ovItems[ovIndex];
-    if (item) { item.run(); }
-  }
-
-  function onKeyDown(e) {
-    var key = e.keyCode || e.which;
-    if ((key >= 37 && key <= 40) || isOk(key) || isBack(key)) { e.preventDefault(); }
-    if (e.repeat && isOk(key)) { return; }
-
-    if (overlayOpen) {
-      if (key === 38) { moveOverlay(-1); }
-      else if (key === 40) { moveOverlay(1); }
-      else if (isOk(key)) { activateOverlay(); }
-      else if (isBack(key)) { resume(); }
-      return;
-    }
-
-    if (screen === 'menu') {
-      if (key === 38) { menuIndex = (menuIndex + MENU_LEN - 1) % MENU_LEN; selectMenu(menuIndex); }
-      else if (key === 40) { menuIndex = (menuIndex + 1) % MENU_LEN; selectMenu(menuIndex); }
-      else if (isOk(key)) { activateMenu(); }
-      else if (isBack(key)) { exitApp(); }
-      return;
-    }
-
-    if (state !== 'playing') {
-      if (isOk(key) || isBack(key)) { showOverlay(state === 'won' ? 'win' : 'lose', resultReason); }
-      return;
-    }
-
-    if (key === 37 && player.dx !== 1) { player.dx = -1; player.dy = 0; }
-    else if (key === 39 && player.dx !== -1) { player.dx = 1; player.dy = 0; }
-    else if (key === 38 && player.dy !== 1) { player.dx = 0; player.dy = -1; }
-    else if (key === 40 && player.dy !== -1) { player.dx = 0; player.dy = 1; }
-    else if (isOk(key) || isBack(key)) { stopLoop(); showOverlay('pause'); }
-  }
-
-  document.addEventListener('keydown', onKeyDown);
-  window.addEventListener('resize', function () { resize(); draw(); });
-  window.addEventListener('blur', function () { if (state === 'playing') { stopLoop(); } });
-
-  buildMenu();
-  updateHud();
+  });
 })();
 </script>
 </body>

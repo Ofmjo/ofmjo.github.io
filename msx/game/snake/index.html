@@ -4,581 +4,370 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Змейка — MSX</title>
-<style>
-  :root{
-    color-scheme: dark;
-    --bg:#070a0f;
-    --line:rgba(255,255,255,.08);
-    --text:rgba(255,255,255,.94);
-    --muted:rgba(255,255,255,.5);
-    --accent:#4c8dff;
-  }
-  *{box-sizing:border-box;}
-  html{font-size:clamp(15px,1.05vw,24px);}
-  html,body{height:100%;margin:0;overflow:hidden;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    user-select:none;
-    -webkit-tap-highlight-color:transparent;
-  }
-  body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    background:
-      radial-gradient(60% 55% at 50% 0%,rgba(76,141,255,.16),transparent 70%),
-      radial-gradient(50% 45% at 85% 100%,rgba(52,211,153,.1),transparent 70%);
-  }
-  #app{position:relative;height:100%;}
-  .screen{
-    position:absolute;
-    inset:0;
-    display:none;
-    flex-direction:column;
-    padding:2.2rem 2.6rem;
-  }
-  .screen.active{display:flex;}
-  .brand{text-align:center;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);}
-  .menu-head{margin-top:4vh;text-align:center;}
-  .menu-head h1{margin:.3rem 0 0;font-size:3.4rem;font-weight:650;letter-spacing:-.02em;}
-  .menu-head .sub{margin:.5rem 0 0;color:var(--muted);font-size:1.05rem;}
-  .menu-list{
-    display:flex;
-    flex-direction:column;
-    gap:.7rem;
-    width:min(36rem,100%);
-    margin:2.4rem auto 0;
-  }
-  .menu-item{
-    display:flex;
-    align-items:center;
-    gap:1rem;
-    padding:1rem 1.4rem;
-    border-radius:1rem;
-    border:1px solid var(--line);
-    background:rgba(255,255,255,.03);
-    font-size:1.05rem;
-    transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;
-  }
-  .menu-item .name{font-weight:550;}
-  .menu-item .meta{margin-left:auto;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums;}
-  .menu-item.sel{
-    background:rgba(76,141,255,.16);
-    border-color:rgba(76,141,255,.65);
-    transform:scale(1.03);
-    box-shadow:0 0 0 2px rgba(76,141,255,.35),0 20px 44px -20px rgba(76,141,255,.85);
-  }
-  .hud{display:flex;gap:1.4rem;justify-content:center;}
-  .hud-item{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    min-width:8.5rem;
-    padding:.5rem 1.2rem;
-    border:1px solid var(--line);
-    border-radius:.9rem;
-    background:rgba(255,255,255,.03);
-  }
-  .hud-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
-  .hud b{font-size:1.5rem;font-variant-numeric:tabular-nums;}
-  .board-wrap{
-    flex:1;
-    min-height:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:1.4rem 0;
-  }
-  .board{
-    --cols:18;
-    --rows:11;
-    --cell:60px;
-    --gap:2px;
-    display:grid;
-    grid-template-columns:repeat(var(--cols),var(--cell));
-    grid-template-rows:repeat(var(--rows),var(--cell));
-    gap:var(--gap);
-  }
-  .cell{
-    width:var(--cell);
-    height:var(--cell);
-    border-radius:calc(var(--cell) * .18);
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(255,255,255,.03);
-  }
-  .cell.snake{background:#3f7fe0;border-color:rgba(255,255,255,.06);}
-  .cell.head{background:#8ab6ff;box-shadow:0 0 24px rgba(76,141,255,.85);}
-  .cell.food{background:#ff5c5c;border-radius:50%;box-shadow:0 0 24px rgba(255,80,80,.75);}
-  .hint-bar{
-    display:flex;
-    flex-wrap:wrap;
-    gap:.5rem 1.6rem;
-    justify-content:center;
-    color:var(--muted);
-    font-size:.85rem;
-  }
-  .hint-bar span{display:inline-flex;align-items:center;gap:.45rem;}
-  .kbd{
-    border:1px solid var(--line);
-    background:rgba(255,255,255,.05);
-    border-radius:.45rem;
-    padding:.1rem .5rem;
-    color:rgba(255,255,255,.85);
-    font-size:.8rem;
-  }
-  .overlay{
-    position:fixed;
-    inset:0;
-    z-index:10;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:rgba(4,7,11,.75);
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .15s ease;
-  }
-  .overlay.show{opacity:1;pointer-events:auto;}
-  .panel{
-    width:min(34rem,86vw);
-    padding:2rem;
-    border-radius:1.4rem;
-    border:1px solid var(--line);
-    background:linear-gradient(180deg,rgba(20,28,39,.98),rgba(12,17,24,.98));
-    box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
-  }
-  .panel h2{margin:0 0 .35rem;font-size:1.9rem;font-weight:650;}
-  .ov-text{margin:0 0 1.5rem;color:var(--muted);font-size:.98rem;}
-  .panel .menu-list{margin:0;width:100%;}
-</style>
+<link rel="stylesheet" href="../common.css"/>
+<style>:root{--accent:#34d399;--accent-rgb:52,211,153;--glow2:76,141,255;}</style>
 </head>
 <body>
-<div id="app">
-  <section id="screen-menu" class="screen active">
-    <div class="brand">MSX Games</div>
-    <div class="menu-head">
-      <h1>Змейка</h1>
-      <p class="sub">Нажмите OK, чтобы начать</p>
-    </div>
-    <nav id="menuList" class="menu-list"></nav>
-    <div style="flex:1"></div>
-    <div class="hint-bar">
-      <span><b class="kbd">▲ ▼</b> выбор</span>
-      <span><b class="kbd">OK</b> играть</span>
-      <span><b class="kbd">BACK</b> выход</span>
-    </div>
-  </section>
-
-  <section id="screen-game" class="screen">
-    <div class="hud">
-      <div class="hud-item"><span class="hud-label">Счёт</span><b id="hudScore">0</b></div>
-      <div class="hud-item"><span class="hud-label">Рекорд</span><b id="hudBest">0</b></div>
-      <div class="hud-item"><span class="hud-label">Темп</span><b id="hudSpeed">—</b></div>
-    </div>
-    <div id="boardWrap" class="board-wrap"><div id="board" class="board"></div></div>
-    <div class="hint-bar">
-      <span><b class="kbd">◀ ▲ ▼ ▶</b> движение</span>
-      <span><b class="kbd">OK</b> пауза</span>
-      <span><b class="kbd">BACK</b> пауза</span>
-    </div>
-  </section>
-</div>
-
-<div id="overlay" class="overlay">
-  <div class="panel">
-    <h2 id="ovTitle"></h2>
-    <p id="ovText" class="ov-text"></p>
-    <nav id="ovList" class="menu-list"></nav>
-  </div>
-</div>
-
+<script src="../common.js"></script>
 <script>
 (function () {
-  var LEVELS = [{ name: 'Обычный', speed: 150 }];
-  var COLS = 18;
-  var ROWS = 11;
-  var OK_CODES = [13, 32];
-  var BACK_CODES = [4, 8, 27, 166, 461, 10009];
+  var COLS = 24;
+  var ROWS = 14;
+  var SPEEDS = { slow: 0.2, normal: 0.15, fast: 0.11 };
+  var SPEED_LABEL = { slow: 'Спокойная', normal: 'Средняя', fast: 'Быстрая' };
+  var BONUS_TIME = 7;
+  var DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
 
-  function isOk(k) { return OK_CODES.indexOf(k) !== -1; }
-  function isBack(k) { return BACK_CODES.indexOf(k) !== -1; }
-  function normalizeKey(e) {
-    var key = e.key || e.code;
-    var code = e.keyCode || e.which;
-    if (code === 23 || code === 66 || key === 'Enter' || key === 'Select') { return 13; }
-    if (key === ' ' || key === 'Spacebar') { return 32; }
-    if (code === 19 || key === 'ArrowUp' || key === 'Up') { return 38; }
-    if (code === 20 || key === 'ArrowDown' || key === 'Down') { return 40; }
-    if (code === 21 || key === 'ArrowLeft' || key === 'Left') { return 37; }
-    if (code === 22 || key === 'ArrowRight' || key === 'Right') { return 39; }
-    return code;
+  var G, view;
+  var snake, prevSnake, dir, queue, food, bonus, eatenFx;
+  var score, eaten, best, newBest, acc, started, dead, deadT, wrap, base, modeKey;
+  var L = { x: 0, y: 0, c: 30 };
+
+  function bestKey() { return 'snake.best.' + modeKey; }
+
+  function interval() { return base * Math.max(0.78, 1 - eaten * 0.006); }
+
+  function occupied(x, y) {
+    for (var i = 0; i < snake.length; i++) { if (snake[i].x === x && snake[i].y === y) { return true; } }
+    return false;
   }
 
-  var screenMenu = document.getElementById('screen-menu');
-  var screenGame = document.getElementById('screen-game');
-  var menuList = document.getElementById('menuList');
-  var board = document.getElementById('board');
-  var boardWrap = document.getElementById('boardWrap');
-  var hudScore = document.getElementById('hudScore');
-  var hudBest = document.getElementById('hudBest');
-  var hudSpeed = document.getElementById('hudSpeed');
-  var overlay = document.getElementById('overlay');
-  var ovTitle = document.getElementById('ovTitle');
-  var ovText = document.getElementById('ovText');
-  var ovList = document.getElementById('ovList');
-
-  var cells = [];
-  var snake = [];
-  var screen = 'menu';
-  var food = null;
-  var dir = { r: 0, c: 1 };
-  var nextDir = { r: 0, c: 1 };
-  var score = 0;
-  var best = 0;
-  var levelIndex = 0;
-  var menuIndex = 0;
-  var MENU_LEN = 2;
-  var timer = null;
-  var running = false;
-  var finished = false;
-  var overlayOpen = false;
-  var ovItems = [];
-  var ovIndex = 0;
-  var resultType = null;
-  var resultReason = '';
-
-  try { best = parseInt(localStorage.getItem('msxsnakebest'), 10) || 0; } catch (err) { best = 0; }
-
-  function buildMenu() {
-    menuList.innerHTML = '';
-    menuList.appendChild(buildMenuItem('Играть', null));
-    menuList.appendChild(buildMenuItem('Выход', null));
-    selectMenu(menuIndex);
-  }
-
-  function buildMenuItem(label, meta) {
-    var item = document.createElement('div');
-    item.className = 'menu-item';
-    var name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = label;
-    item.appendChild(name);
-    if (meta) {
-      var m = document.createElement('span');
-      m.className = 'meta';
-      m.textContent = meta;
-      item.appendChild(m);
-    }
-    return item;
-  }
-
-  function activateMenu() {
-    if (menuIndex === 0) { startLevel(0); }
-    else { exitApp(); }
-  }
-
-  function exitApp() {
-    location.href = '../index.html';
-  }
-
-  function selectMenu(i) {
-    for (var k = 0; k < menuList.children.length; k++) {
-      menuList.children[k].classList.toggle('sel', k === i);
-    }
-  }
-
-  function setScreen(name) {
-    screen = name;
-    screenMenu.classList.toggle('active', name === 'menu');
-    screenGame.classList.toggle('active', name === 'game');
-  }
-
-  function buildBoard() {
-    board.innerHTML = '';
-    cells = [];
-    var frag = document.createDocumentFragment();
-    for (var i = 0; i < COLS * ROWS; i++) {
-      var cell = document.createElement('div');
-      cell.className = 'cell';
-      frag.appendChild(cell);
-      cells.push(cell);
-    }
-    board.appendChild(frag);
-  }
-
-  function layout() {
-    var rect = boardWrap.getBoundingClientRect();
-    var pad = parseFloat(getComputedStyle(boardWrap).paddingTop) || 0;
-    var gap = 2;
-    var availW = rect.width - 8;
-    var availH = rect.height - pad * 2 - 8;
-    var cw = (availW - gap * (COLS - 1)) / COLS;
-    var ch = (availH - gap * (ROWS - 1)) / ROWS;
-    var size = Math.floor(Math.min(cw, ch));
-    if (size < 16) { size = 16; }
-    board.style.setProperty('--cols', COLS);
-    board.style.setProperty('--rows', ROWS);
-    board.style.setProperty('--gap', gap + 'px');
-    board.style.setProperty('--cell', size + 'px');
-  }
-
-  function idx(r, c) { return r * COLS + c; }
-
-  function paint() {
-    for (var i = 0; i < cells.length; i++) {
-      if (cells[i].className !== 'cell') { cells[i].className = 'cell'; }
-    }
-    if (food) {
-      cells[idx(food.r, food.c)].className = 'cell food';
-    }
-    for (var s = snake.length - 1; s >= 0; s--) {
-      var seg = snake[s];
-      cells[idx(seg.r, seg.c)].className = s === 0 ? 'cell snake head' : 'cell snake';
-    }
-  }
-
-  function spawnFood() {
+  function freeCell() {
     var free = [];
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var taken = false;
-        for (var s = 0; s < snake.length; s++) {
-          if (snake[s].r === r && snake[s].c === c) { taken = true; break; }
-        }
-        if (!taken) { free.push({ r: r, c: c }); }
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (occupied(x, y)) { continue; }
+        if (food && food.x === x && food.y === y) { continue; }
+        if (bonus && bonus.x === x && bonus.y === y) { continue; }
+        free.push({ x: x, y: y });
       }
     }
-    if (!free.length) { food = null; return; }
-    food = free[Math.floor(Math.random() * free.length)];
+    return free.length ? MSX.pick(free) : null;
   }
 
   function updateHud() {
-    hudScore.textContent = score;
     if (score > best) {
       best = score;
-      try { localStorage.setItem('msxsnakebest', String(best)); } catch (err) {}
+      newBest = true;
+      MSX.store.set(bestKey(), best);
     }
-    hudBest.textContent = best;
-    hudSpeed.textContent = LEVELS[levelIndex].name;
+    G.hud('score', score);
+    G.hud('len', snake.length);
+    G.hud('best', best);
   }
 
-  function stopLoop() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-    running = false;
+  function turn(name) {
+    var d = DIRS[name];
+    var last = queue.length ? queue[queue.length - 1] : dir;
+    if (d.x === last.x && d.y === last.y) { started = true; return; }
+    if (d.x === -last.x && d.y === -last.y) { return; }
+    if (queue.length < 3) { queue.push(d); }
+    started = true;
   }
 
-  function startLoop() {
-    stopLoop();
-    if (finished) { return; }
-    running = true;
-    timer = setInterval(tick, LEVELS[levelIndex].speed);
-  }
-
-  function startLevel(li) {
-    levelIndex = li;
-    stopLoop();
-    closeOverlay();
-    setScreen('game');
-    buildBoard();
-    layout();
-    var midR = Math.floor(ROWS / 2);
-    var midC = Math.floor(COLS / 2);
-    snake = [
-      { r: midR, c: midC },
-      { r: midR, c: midC - 1 },
-      { r: midR, c: midC - 2 }
-    ];
-    dir = { r: 0, c: 1 };
-    nextDir = { r: 0, c: 1 };
-    score = 0;
-    finished = false;
-    resultType = null;
-    resultReason = '';
-    spawnFood();
-    updateHud();
-    paint();
-    startLoop();
-  }
-
-  function tick() {
-    dir = nextDir;
-    var head = { r: snake[0].r + dir.r, c: snake[0].c + dir.c };
-
-    if (head.r < 0 || head.c < 0 || head.r >= ROWS || head.c >= COLS) {
-      gameOver('Вы врезались в стену.');
+  function step() {
+    eatenFx = null;
+    if (queue.length) { dir = queue.shift(); }
+    var head = snake[0];
+    var nx = head.x + dir.x;
+    var ny = head.y + dir.y;
+    if (wrap) {
+      nx = (nx + COLS) % COLS;
+      ny = (ny + ROWS) % ROWS;
+    } else if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) {
+      die('Змейка врезалась в стену.');
       return;
     }
-
-    var grows = food && head.r === food.r && head.c === food.c;
-    var limit = snake.length - (grows ? 0 : 1);
+    var eatFood = food && food.x === nx && food.y === ny;
+    var eatBonus = bonus && bonus.x === nx && bonus.y === ny;
+    var grow = eatFood || eatBonus;
+    var limit = snake.length - (grow ? 0 : 1);
     for (var i = 0; i < limit; i++) {
-      if (snake[i].r === head.r && snake[i].c === head.c) {
-        gameOver('Вы врезались в себя.');
-        return;
-      }
+      if (snake[i].x === nx && snake[i].y === ny) { die('Змейка укусила себя.'); return; }
     }
 
-    snake.unshift(head);
-    if (grows) {
-      score += 10;
-      spawnFood();
-      updateHud();
-      if (snake.length >= COLS * ROWS) {
-        win();
-        return;
-      }
+    prevSnake = snake.map(function (s) { return { x: s.x, y: s.y }; });
+    snake.unshift({ x: nx, y: ny });
+    if (grow) {
+      prevSnake.push(prevSnake[prevSnake.length - 1]);
     } else {
       snake.pop();
     }
-    paint();
+
+    if (eatFood) {
+      eaten++;
+      score += 10;
+      eatenFx = { x: nx, y: ny, color: '#ff5c5c' };
+      food = freeCell();
+      if (eaten % 5 === 0 && !bonus) {
+        var c = freeCell();
+        if (c) { bonus = { x: c.x, y: c.y, t: BONUS_TIME }; }
+      }
+      if (!food) { win(); return; }
+    }
+    if (eatBonus) {
+      var extra = 30 + Math.round(bonus.t * 5);
+      score += extra;
+      eatenFx = { x: nx, y: ny, color: '#fbbf24' };
+      G.toast('+' + extra);
+      bonus = null;
+    }
+    if (grow) { updateHud(); }
   }
 
-  function gameOver(reason) {
-    stopLoop();
-    finished = true;
-    resultType = 'lose';
-    resultReason = reason || '';
-    paint();
-    showOverlay('lose', reason);
+  function die(reason) {
+    dead = reason;
+    deadT = 0.8;
   }
 
   function win() {
-    stopLoop();
-    finished = true;
-    resultType = 'win';
-    resultReason = '';
-    paint();
-    showOverlay('win');
+    G.finish({ title: 'Поле заполнено!', stats: [['Счёт', score, newBest], ['Длина', snake.length], ['Рекорд', best]] });
   }
 
-  function buildItem(label) {
-    var item = document.createElement('div');
-    item.className = 'menu-item';
-    var name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = label;
-    item.appendChild(name);
-    return item;
+  /* ---------------- отрисовка ---------------- */
+
+  function resize(w, h) {
+    L.c = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
+    L.x = Math.round((w - L.c * COLS) / 2);
+    L.y = Math.round((h - L.c * ROWS) / 2);
   }
 
-  function buildOverlayList(items) {
-    ovList.innerHTML = '';
-    for (var i = 0; i < items.length; i++) {
-      ovList.appendChild(buildItem(items[i].label));
+  function center(p) { return { x: L.x + (p.x + 0.5) * L.c, y: L.y + (p.y + 0.5) * L.c }; }
+
+  function drawApple(ctx, p, scale) {
+    var c = center(p);
+    var r = L.c * 0.36 * scale;
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,80,80,.8)';
+    ctx.shadowBlur = L.c * 0.6;
+    ctx.fillStyle = '#ff5c5c';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y + r * 0.08, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath();
+    ctx.arc(c.x - r * 0.35, c.y - r * 0.25, r * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath();
+    ctx.ellipse(c.x + r * 0.3, c.y - r * 0.95, r * 0.35, r * 0.18, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawStar(ctx, p, t) {
+    var c = center(p);
+    var r = L.c * 0.42 * (1 + Math.sin(MSX.now() / 140) * 0.06);
+    ctx.save();
+    ctx.shadowColor = 'rgba(251,191,36,.9)';
+    ctx.shadowBlur = L.c * 0.7;
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var a = -Math.PI / 2 + i * Math.PI / 5;
+      var rr = i % 2 ? r * 0.45 : r;
+      ctx.lineTo(c.x + Math.cos(a) * rr, c.y + Math.sin(a) * rr);
     }
-    selectOverlay(ovIndex);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(251,191,36,.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, L.c * 0.62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (t / BONUS_TIME));
+    ctx.stroke();
   }
 
-  function selectOverlay(i) {
-    for (var k = 0; k < ovList.children.length; k++) {
-      ovList.children[k].classList.toggle('sel', k === i);
+  function segColor(i, n) {
+    var k = n > 1 ? i / (n - 1) : 0;
+    var light = 62 - k * 22;
+    return 'hsl(' + Math.round(152 - k * 20) + ',70%,' + Math.round(light) + '%)';
+  }
+
+  function draw() {
+    var ctx = view.ctx;
+    var c = L.c;
+    ctx.clearRect(0, 0, view.w, view.h);
+
+    // поле
+    ctx.fillStyle = 'rgba(8,14,18,.9)';
+    MSX.rrect(ctx, L.x - 4, L.y - 4, COLS * c + 8, ROWS * c + 8, 12);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.025)';
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = (y % 2); x < COLS; x += 2) { ctx.fillRect(L.x + x * c, L.y + y * c, c, c); }
     }
-  }
-
-  function showOverlay(type, reason) {
-    var title = 'Пауза';
-    var text = 'Игра приостановлена.';
-    var items = [
-      { label: 'Продолжить', run: resume },
-      { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-      { label: 'Выход', run: exitApp }
-    ];
-    if (type === 'lose') {
-      title = 'Игра окончена';
-      text = (reason || '') + ' Счёт: ' + score + '.';
-      items = [
-        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Выход', run: exitApp }
-      ];
-    } else if (type === 'win') {
-      title = 'Победа';
-      text = 'Поле заполнено! Счёт: ' + score + '.';
-      items = [
-        { label: 'Новая игра', run: function () { startLevel(levelIndex); } },
-        { label: 'Выход', run: exitApp }
-      ];
+    ctx.lineWidth = 3;
+    if (wrap) {
+      ctx.strokeStyle = 'rgba(56,189,248,.45)';
+      if (ctx.setLineDash) { ctx.setLineDash([c * 0.4, c * 0.3]); }
+    } else {
+      ctx.strokeStyle = 'rgba(248,113,113,.7)';
     }
-    overlayOpen = true;
-    ovIndex = 0;
-    ovItems = items;
-    ovTitle.textContent = title;
-    ovText.textContent = text;
-    buildOverlayList(items);
-    overlay.classList.add('show');
-  }
+    MSX.rrect(ctx, L.x - 4, L.y - 4, COLS * c + 8, ROWS * c + 8, 12);
+    ctx.stroke();
+    if (ctx.setLineDash) { ctx.setLineDash([]); }
 
-  function closeOverlay() {
-    overlayOpen = false;
-    overlay.classList.remove('show');
-  }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(L.x, L.y, COLS * c, ROWS * c);
+    ctx.clip();
 
-  function resume() {
-    closeOverlay();
-    if (!finished) { startLoop(); }
-  }
-
-  function moveOverlay(d) {
-    var n = ovItems.length;
-    if (!n) { return; }
-    ovIndex = (ovIndex + d + n) % n;
-    selectOverlay(ovIndex);
-  }
-
-  function activateOverlay() {
-    var item = ovItems[ovIndex];
-    if (item) { item.run(); }
-  }
-
-  function turn(dr, dc) {
-    if (dr === -dir.r && dc === -dir.c) { return; }
-    nextDir = { r: dr, c: dc };
-  }
-
-  function onKeyDown(e) {
-    var k = normalizeKey(e);
-    if ((k >= 37 && k <= 40) || isOk(k) || isBack(k)) { e.preventDefault(); }
-    if (e.repeat && isOk(k)) { return; }
-
-    if (overlayOpen) {
-      if (k === 38) { moveOverlay(-1); }
-      else if (k === 40) { moveOverlay(1); }
-      else if (isOk(k)) { activateOverlay(); }
-      else if (isBack(k)) { resume(); }
-      return;
-    }
-
-    if (screen === 'menu') {
-      if (k === 38) { menuIndex = (menuIndex + MENU_LEN - 1) % MENU_LEN; selectMenu(menuIndex); }
-      else if (k === 40) { menuIndex = (menuIndex + 1) % MENU_LEN; selectMenu(menuIndex); }
-      else if (isOk(k)) { activateMenu(); }
-      else if (isBack(k)) { exitApp(); }
-      return;
+    var t = started && !dead ? Math.min(1, acc / interval()) : 1;
+    if (food) { drawApple(ctx, food, 1); }
+    if (bonus) { drawStar(ctx, bonus, bonus.t); }
+    if (eatenFx && t < 0.9) {
+      ctx.globalAlpha = 1 - t;
+      ctx.fillStyle = eatenFx.color;
+      var e = center(eatenFx);
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, c * 0.36 * (1 - t * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
 
-    if (k === 37) { turn(0, -1); }
-    else if (k === 39) { turn(0, 1); }
-    else if (k === 38) { turn(-1, 0); }
-    else if (k === 40) { turn(1, 0); }
-    else if (isOk(k) || isBack(k)) {
-      if (finished) { showOverlay(resultType || 'lose', resultReason); return; }
-      stopLoop();
-      showOverlay('pause');
+    // позиции сегментов с интерполяцией
+    var pts = [];
+    for (var i = 0; i < snake.length; i++) {
+      var cur = snake[i];
+      var pr = prevSnake && prevSnake[i] ? prevSnake[i] : cur;
+      if (Math.abs(pr.x - cur.x) > 1 || Math.abs(pr.y - cur.y) > 1) { pr = cur; }
+      pts.push({ x: L.x + (pr.x + (cur.x - pr.x) * t + 0.5) * c, y: L.y + (pr.y + (cur.y - pr.y) * t + 0.5) * c, cell: cur });
+    }
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = c * 0.74;
+    for (var s = pts.length - 1; s > 0; s--) {
+      var a = pts[s], b = pts[s - 1];
+      if (Math.abs(a.cell.x - b.cell.x) > 1 || Math.abs(a.cell.y - b.cell.y) > 1) { continue; }
+      ctx.strokeStyle = segColor(s, pts.length);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    if (pts.length === 1) {
+      ctx.fillStyle = segColor(0, 1);
+      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, c * 0.37, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // голова
+    var h = pts[0];
+    ctx.save();
+    ctx.shadowColor = dead ? 'rgba(248,113,113,.9)' : 'rgba(52,211,153,.8)';
+    ctx.shadowBlur = c * 0.7;
+    ctx.fillStyle = dead ? '#f87171' : '#6ee7b7';
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, c * 0.44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    var ex = -dir.y, ey = dir.x;
+    for (var side = -1; side <= 1; side += 2) {
+      var px = h.x + dir.x * c * 0.14 + ex * side * c * 0.18;
+      var py = h.y + dir.y * c * 0.14 + ey * side * c * 0.18;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(px, py, c * 0.11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#062016';
+      ctx.beginPath(); ctx.arc(px + dir.x * c * 0.04, py + dir.y * c * 0.04, c * 0.055, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    if (!started) {
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(L.x, L.y + ROWS * c * 0.36, COLS * c, c * 2.2);
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 ' + Math.round(c * 0.8) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Нажмите стрелку, чтобы начать', L.x + COLS * c / 2, L.y + ROWS * c * 0.36 + c * 1.1);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
     }
   }
 
-  document.addEventListener('keydown', onKeyDown);
-  window.addEventListener('resize', layout);
-  window.addEventListener('blur', stopLoop);
+  /* ---------------- движок ---------------- */
 
-  buildMenu();
-  updateHud();
+  G = MSX.game({
+    id: 'snake',
+    title: 'Змейка',
+    continuous: true,
+    options: [
+      { key: 'speed', label: 'Скорость', values: [
+        { value: 'slow', label: 'Спокойная' }, { value: 'normal', label: 'Средняя' }, { value: 'fast', label: 'Быстрая' }
+      ], def: 'normal' },
+      { key: 'walls', label: 'Края поля', values: [
+        { value: 'walls', label: 'Стены' }, { value: 'wrap', label: 'Без стен' }
+      ], def: 'walls' }
+    ],
+    hud: [
+      { key: 'score', label: 'Счёт' },
+      { key: 'len', label: 'Длина' },
+      { key: 'best', label: 'Рекорд' }
+    ],
+    hints: [['◀ ▲ ▼ ▶', 'поворот'], ['OK / BACK', 'пауза']],
+    info: function (s) {
+      var b = MSX.store.get('snake.best.' + s.speed + '.' + s.walls, 0);
+      return 'Рекорд (' + SPEED_LABEL[s.speed].toLowerCase() + ', ' + (s.walls === 'wrap' ? 'без стен' : 'со стенами') + '): ' + b;
+    },
+    start: function (s) {
+      view = G.canvas();
+      resize(view.w, view.h);
+      base = SPEEDS[s.speed];
+      wrap = s.walls === 'wrap';
+      modeKey = s.speed + '.' + s.walls;
+      best = MSX.store.get(bestKey(), 0);
+      newBest = false;
+      var cy = Math.floor(ROWS / 2);
+      var cx = Math.floor(COLS / 2) - 2;
+      snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }, { x: cx - 3, y: cy }];
+      prevSnake = null;
+      dir = DIRS.right;
+      queue = [];
+      food = null;
+      bonus = null;
+      eatenFx = null;
+      food = freeCell();
+      score = 0;
+      eaten = 0;
+      acc = 0;
+      started = false;
+      dead = null;
+      updateHud();
+    },
+    resize: resize,
+    update: function (dt) {
+      if (dead) {
+        deadT -= dt;
+        if (deadT <= 0) {
+          G.finish({
+            title: 'Игра окончена',
+            text: dead,
+            stats: [['Счёт', score, newBest], ['Длина', snake.length], ['Рекорд', best]]
+          });
+        }
+        return;
+      }
+      if (!started) { return; }
+      if (bonus) {
+        bonus.t -= dt;
+        if (bonus.t <= 0) { bonus = null; }
+      }
+      acc += dt;
+      var iv = interval();
+      if (acc >= iv) {
+        acc -= iv;
+        if (acc > iv) { acc = 0; }
+        step();
+      }
+    },
+    draw: draw,
+    key: function (k) {
+      if (DIRS[k]) { if (!dead) { turn(k); } return true; }
+      if (k === 'ok') { G.pause(); return true; }
+      return k !== 'back';
+    }
+  });
 })();
 </script>
 </body>

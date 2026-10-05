@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Миллионер — MSX</title>
+<link rel="stylesheet" href="../common.css"/>
+<style>
+  :root{--accent:#f59e0b;--accent-rgb:245,158,11;--glow2:79,70,229;}
+  .mil{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;}
+  .mil-main{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding-right:1.6rem;}
+  .mil-ladder{width:15rem;display:flex;flex-direction:column;justify-content:center;}
+
+  .life{display:flex;justify-content:center;margin-bottom:1.2rem;}
+  .life-item{
+    min-width:7.5rem;margin:0 .45rem;padding:.55rem 1rem;
+    border-radius:2rem;border:2px solid rgba(129,140,248,.45);
+    background:rgba(30,27,75,.6);
+    text-align:center;font-weight:650;font-size:1rem;
+    transition:transform .12s ease,border-color .12s ease,background .12s ease;
+  }
+  .life-item.used{opacity:.28;text-decoration:line-through;}
+  .life-item.sel{border-color:#fbbf24;background:rgba(245,158,11,.22);transform:scale(1.07);}
+  .life-item.take{border-color:rgba(52,211,153,.5);}
+
+  .q-meta{text-align:center;color:rgba(255,255,255,.55);font-size:.9rem;letter-spacing:.06em;margin-bottom:.5rem;}
+  .q-box{
+    position:relative;
+    padding:1.4rem 2rem;
+    border-radius:1.4rem;
+    border:2px solid rgba(129,140,248,.55);
+    background:linear-gradient(180deg,rgba(30,27,75,.92),rgba(15,14,45,.92));
+    box-shadow:0 0 40px -12px rgba(99,102,241,.7);
+    text-align:center;
+    font-size:1.55rem;
+    font-weight:600;
+    line-height:1.3;
+    min-height:5.6rem;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  .info{
+    margin:1rem auto 0;
+    min-height:6.5rem;
+    width:100%;
+    display:flex;align-items:flex-end;justify-content:center;
+    color:rgba(255,255,255,.85);
+    font-size:1.05rem;
+    text-align:center;
+  }
+  .info .phone{
+    max-width:46rem;padding:.8rem 1.3rem;border-radius:1rem;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);line-height:1.4;
+  }
+  .info .phone b{color:#fbbf24;}
+  .bars{display:flex;align-items:flex-end;height:6.5rem;}
+  .bar{width:4.2rem;margin:0 .7rem;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar i{display:block;width:2.4rem;border-radius:.4rem .4rem 0 0;background:linear-gradient(180deg,#fbbf24,#d97706);transition:height .9s ease;height:0;}
+  .bar span{font-size:.85rem;color:rgba(255,255,255,.7);margin-top:.25rem;}
+  .bar em{font-style:normal;font-size:.85rem;margin-bottom:.2rem;font-variant-numeric:tabular-nums;}
+
+  .answers{display:flex;flex-wrap:wrap;margin-top:1rem;}
+  .ans{
+    width:calc(50% - .8rem);margin:.4rem;
+    display:flex;align-items:center;
+    padding:.95rem 1.4rem;
+    border-radius:2.2rem;
+    border:2px solid rgba(129,140,248,.5);
+    background:linear-gradient(180deg,rgba(30,27,75,.92),rgba(17,16,52,.92));
+    font-size:1.2rem;
+    min-height:3.6rem;
+    transition:transform .12s ease,background .15s ease,border-color .15s ease;
+  }
+  .ans b{color:#fbbf24;margin-right:.7rem;font-weight:700;}
+  .ans.sel{border-color:#fbbf24;transform:scale(1.03);box-shadow:0 0 0 2px rgba(251,191,36,.3);}
+  .ans.removed{opacity:.15;}
+  .ans.locked{background:linear-gradient(180deg,#f59e0b,#b45309);border-color:#fde68a;color:#1a1000;}
+  .ans.locked b{color:#1a1000;}
+  .ans.right{background:linear-gradient(180deg,#22c55e,#15803d);border-color:#bbf7d0;color:#02180a;animation:blink .35s ease 3;}
+  .ans.right b{color:#02180a;}
+  .ans.wrong{background:linear-gradient(180deg,#ef4444,#991b1b);border-color:#fecaca;}
+  @keyframes blink{50%{opacity:.45;}}
+  .prompt{text-align:center;margin-top:.8rem;min-height:1.4em;color:#fbbf24;font-size:1.05rem;font-weight:600;}
+
+  .rung{
+    display:flex;align-items:center;
+    padding:.24rem .9rem;margin:.07rem 0;
+    border-radius:.6rem;
+    font-size:.92rem;
+    color:rgba(255,255,255,.62);
+    font-variant-numeric:tabular-nums;
+  }
+  .rung span{width:2rem;color:rgba(255,255,255,.4);}
+  .rung b{margin-left:auto;font-weight:600;}
+  .rung.safe{color:#fff;}
+  .rung.safe b{color:#fde68a;}
+  .rung.done{color:rgba(52,211,153,.8);}
+  .rung.cur{background:linear-gradient(90deg,#f59e0b,#d97706);color:#1a1000;}
+  .rung.cur span,.rung.cur b{color:#1a1000;}
+</style>
+</head>
+<body>
+<script src="../common.js"></script>
+<script src="questions.js"></script>
+<script>
+(function () {
+  var PRIZES = [500, 1000, 2000, 3000, 5000, 10000, 15000, 25000, 50000, 100000, 200000, 400000, 800000, 1500000, 3000000];
+  var SAFE = { 4: true, 9: true };     // индексы несгораемых сумм (5 000 и 100 000)
+  var LETTERS = ['A', 'B', 'C', 'D'];
+  var FRIENDS = ['Сергей', 'Ольга', 'дядя Миша', 'Марина', 'Андрей', 'бабушка Валя', 'Костя', 'Наташа'];
+  var LIFE = [
+    { id: 'fifty', label: '50 : 50' },
+    { id: 'hall', label: 'Помощь зала' },
+    { id: 'call', label: 'Звонок другу' },
+    { id: 'take', label: 'Забрать деньги' }
+  ];
+
+  var G;
+  var dom = null;
+  var questions, level, q, used, removed;
+  var focus, sel, lifeSel, phase, locked;
+  var timer = null;
+  var best, correctCount;
+
+  function prizeText(i) { return i < 0 ? '0 ₽' : MSX.fmtNum(PRIZES[i]) + ' ₽'; }
+
+  function guaranteed() {
+    var g = -1;
+    for (var i = 0; i < level; i++) { if (SAFE[i]) { g = i; } }
+    return g;
+  }
+
+  /* ---------------- вопросы ---------------- */
+
+  function takeQuestions(kind, n) {
+    var pool = (window.MSX_QUESTIONS || {})[kind] || [];
+    var seen = MSX.store.get('mil.seen.' + kind, []) || [];
+    var free = [];
+    for (var i = 0; i < pool.length; i++) { if (seen.indexOf(i) === -1) { free.push(i); } }
+    if (free.length < n) {
+      seen = [];
+      free = [];
+      for (var j = 0; j < pool.length; j++) { free.push(j); }
+    }
+    MSX.shuffle(free);
+    var picked = free.slice(0, n);
+    MSX.store.set('mil.seen.' + kind, seen.concat(picked));
+    return picked.map(function (idx) {
+      var raw = pool[idx];
+      var order = MSX.shuffle([0, 1, 2, 3]);
+      var answers = [];
+      var correct = 0;
+      for (var k = 0; k < 4; k++) {
+        answers.push(raw[1 + order[k]]);
+        if (order[k] === 0) { correct = k; }
+      }
+      return { text: raw[0], answers: answers, correct: correct };
+    });
+  }
+
+  /* ---------------- DOM ---------------- */
+
+  function build() {
+    if (dom) { return; }
+    var E = MSX.el;
+    dom = {};
+    var root = E('div', 'mil');
+    var main = E('div', 'mil-main');
+    var ladder = E('div', 'mil-ladder');
+
+    dom.life = E('div', 'life');
+    dom.lifeItems = LIFE.map(function (l) {
+      var it = E('div', 'life-item' + (l.id === 'take' ? ' take' : ''), l.label);
+      dom.life.appendChild(it);
+      return it;
+    });
+    main.appendChild(dom.life);
+
+    dom.meta = E('div', 'q-meta');
+    main.appendChild(dom.meta);
+    dom.q = E('div', 'q-box');
+    main.appendChild(dom.q);
+
+    dom.answers = E('div', 'answers');
+    dom.ans = [];
+    for (var i = 0; i < 4; i++) {
+      var a = E('div', 'ans');
+      a.appendChild(E('b', null, LETTERS[i] + ':'));
+      a.appendChild(E('span'));
+      dom.answers.appendChild(a);
+      dom.ans.push(a);
+    }
+    main.appendChild(dom.answers);
+    dom.prompt = E('div', 'prompt');
+    main.appendChild(dom.prompt);
+    dom.info = E('div', 'info');
+    main.appendChild(dom.info);
+
+    dom.rungs = [];
+    for (var r = PRIZES.length - 1; r >= 0; r--) {
+      var rung = E('div', 'rung' + (SAFE[r] ? ' safe' : ''));
+      rung.appendChild(E('span', null, String(r + 1)));
+      rung.appendChild(E('b', null, MSX.fmtNum(PRIZES[r]) + ' ₽'));
+      ladder.appendChild(rung);
+      dom.rungs[r] = rung;
+    }
+
+    root.appendChild(main);
+    root.appendChild(ladder);
+    G.stage.appendChild(root);
+  }
+
+  function render() {
+    dom.meta.textContent = 'Вопрос ' + (level + 1) + ' из 15  ·  ' + prizeText(level);
+    dom.q.textContent = q.text;
+    for (var i = 0; i < 4; i++) {
+      var cls = 'ans';
+      if (removed[i]) { cls += ' removed'; }
+      if (focus === 'answers' && sel === i && phase === 'answer') { cls += ' sel'; }
+      if ((phase === 'confirm' || phase === 'locked') && sel === i) { cls += ' locked'; }
+      if (phase === 'reveal') {
+        if (i === q.correct) { cls += ' right'; }
+        else if (i === locked) { cls += ' wrong'; }
+      }
+      dom.ans[i].className = cls;
+      dom.ans[i].lastChild.textContent = removed[i] ? '' : q.answers[i];
+    }
+    for (var l = 0; l < LIFE.length; l++) {
+      var lc = 'life-item' + (LIFE[l].id === 'take' ? ' take' : '');
+      if (used[LIFE[l].id]) { lc += ' used'; }
+      if (focus === 'life' && lifeSel === l && phase === 'answer') { lc += ' sel'; }
+      dom.lifeItems[l].className = lc;
+    }
+    for (var r = 0; r < PRIZES.length; r++) {
+      var rc = 'rung' + (SAFE[r] ? ' safe' : '');
+      if (r < level) { rc += ' done'; }
+      if (r === level) { rc += ' cur'; }
+      dom.rungs[r].className = rc;
+    }
+    dom.prompt.textContent = phase === 'confirm' ? 'Окончательный ответ?  OK — да,  BACK — нет' : '';
+    G.hud('q', (level + 1) + ' / 15');
+    G.hud('prize', prizeText(level));
+    G.hud('safe', prizeText(guaranteed()));
+  }
+
+  /* ---------------- ход игры ---------------- */
+
+  function wait(sec, fn) { timer = { t: sec, fn: fn }; }
+
+  function nextQuestion() {
+    q = questions[level];
+    removed = [false, false, false, false];
+    phase = 'answer';
+    focus = 'answers';
+    sel = 0;
+    locked = -1;
+    dom.info.innerHTML = '';
+    render();
+  }
+
+  function moveSel(dx, dy) {
+    var col = sel % 2, row = Math.floor(sel / 2);
+    if (dy < 0 && row === 0) { focus = 'life'; return; }
+    var nc = Math.max(0, Math.min(1, col + dx));
+    var nr = Math.max(0, Math.min(1, row + dy));
+    var next = nr * 2 + nc;
+    if (next === sel) { return; }
+    if (!removed[next]) { sel = next; return; }
+    // целевой вариант убран 50:50 — пробуем соседний по диагонали
+    var alt = dx ? ((1 - nr) * 2 + nc) : (nr * 2 + (1 - nc));
+    if (!removed[alt] && alt !== sel) { sel = alt; }
+  }
+
+  function firstAvailable() {
+    for (var i = 0; i < 4; i++) { if (!removed[i]) { return i; } }
+    return 0;
+  }
+
+  function lockAnswer() {
+    phase = 'locked';
+    locked = sel;
+    render();
+    wait(1.4 + level * 0.12, reveal);
+  }
+
+  function reveal() {
+    phase = 'reveal';
+    render();
+    if (locked === q.correct) {
+      correctCount++;
+      wait(1.8, function () {
+        if (level === PRIZES.length - 1) {
+          level = PRIZES.length;
+          end('win');
+        } else {
+          level++;
+          nextQuestion();
+        }
+      });
+    } else {
+      wait(2.4, function () { end('wrong'); });
+    }
+  }
+
+  function end(kind) {
+    timer = null;
+    var won;
+    var title, text;
+    if (kind === 'win') {
+      won = PRIZES[PRIZES.length - 1];
+      title = 'Вы — миллионер!';
+      text = 'Все 15 вопросов позади. Поздравляем!';
+    } else if (kind === 'take') {
+      won = level > 0 ? PRIZES[level - 1] : 0;
+      title = 'Вы забрали деньги';
+      text = 'Правильный ответ был: ' + LETTERS[q.correct] + ' — ' + q.answers[q.correct] + '.';
+    } else {
+      var g = guaranteed();
+      won = g >= 0 ? PRIZES[g] : 0;
+      title = 'Неверный ответ';
+      text = 'Правильный ответ: ' + LETTERS[q.correct] + ' — ' + q.answers[q.correct] + '.';
+    }
+    var isBest = won > best;
+    if (isBest) { best = won; MSX.store.set('mil.best', best); }
+    G.finish({
+      title: title,
+      text: text,
+      stats: [
+        ['Выигрыш', MSX.fmtNum(won) + ' ₽', isBest && won > 0],
+        ['Верных ответов', correctCount + ' из 15'],
+        ['Рекорд', MSX.fmtNum(best) + ' ₽']
+      ]
+    });
+  }
+
+  /* ---------------- подсказки ---------------- */
+
+  function useLife(i) {
+    var id = LIFE[i].id;
+    if (used[id]) { G.toast('Подсказка уже использована'); return; }
+    if (id === 'take') { askTake(); return; }
+    used[id] = true;
+    if (id === 'fifty') { fifty(); }
+    else if (id === 'hall') { hall(); }
+    else if (id === 'call') { call(); }
+    focus = 'answers';
+    sel = firstAvailable();
+    render();
+  }
+
+  function fifty() {
+    var wrong = [];
+    for (var i = 0; i < 4; i++) { if (i !== q.correct && !removed[i]) { wrong.push(i); } }
+    MSX.shuffle(wrong);
+    for (var k = 0; k < wrong.length - 1 && k < 2; k++) { removed[wrong[k]] = true; }
+  }
+
+  function available() {
+    var out = [];
+    for (var i = 0; i < 4; i++) { if (!removed[i]) { out.push(i); } }
+    return out;
+  }
+
+  function hall() {
+    var avail = available();
+    var lo, hi, misleadChance;
+    if (level < 5) { lo = 55; hi = 82; misleadChance = 0; }
+    else if (level < 10) { lo = 40; hi = 65; misleadChance = 0.12; }
+    else { lo = 28; hi = 50; misleadChance = 0.3; }
+    var leader = q.correct;
+    if (Math.random() < misleadChance) {
+      var wrongs = avail.filter(function (a) { return a !== q.correct; });
+      if (wrongs.length) { leader = MSX.pick(wrongs); }
+    }
+    var pct = [0, 0, 0, 0];
+    var top = Math.round(MSX.rand(lo, hi));
+    pct[leader] = top;
+    var others = avail.filter(function (a) { return a !== leader; });
+    var weights = others.map(function () { return Math.random() + 0.15; });
+    var sum = weights.reduce(function (a, b) { return a + b; }, 0);
+    var rest = 100 - top;
+    var given = 0;
+    for (var k = 0; k < others.length; k++) {
+      var v = k === others.length - 1 ? rest - given : Math.round(rest * weights[k] / sum);
+      pct[others[k]] = Math.max(0, v);
+      given += pct[others[k]];
+    }
+    var bars = MSX.el('div', 'bars');
+    var fills = [];
+    for (var b = 0; b < 4; b++) {
+      var bar = MSX.el('div', 'bar');
+      bar.appendChild(MSX.el('em', null, removed[b] ? '' : pct[b] + '%'));
+      var fill = MSX.el('i');
+      bar.appendChild(fill);
+      bar.appendChild(MSX.el('span', null, LETTERS[b]));
+      bars.appendChild(bar);
+      fills.push(fill);
+    }
+    dom.info.innerHTML = '';
+    dom.info.appendChild(bars);
+    setTimeout(function () {
+      for (var f = 0; f < 4; f++) { fills[f].style.height = (pct[f] * 0.05) + 'rem'; }
+    }, 30);
+  }
+
+  function call() {
+    var avail = available();
+    var pRight = level < 5 ? 0.95 : (level < 10 ? 0.8 : 0.55);
+    var knows = Math.random() < pRight;
+    var ans = q.correct;
+    if (!knows) {
+      var wrongs = avail.filter(function (a) { return a !== q.correct; });
+      if (wrongs.length) { ans = MSX.pick(wrongs); }
+    }
+    var who = MSX.pick(FRIENDS);
+    var L = LETTERS[ans];
+    var T = q.answers[ans];
+    var phrase;
+    if (knows && level < 8) {
+      phrase = 'Это точно <b>' + L + '</b> — «' + esc(T) + '». Я про это недавно читал(а)!';
+    } else if (knows) {
+      phrase = 'Думаю, <b>' + L + '</b> — «' + esc(T) + '». Уверен(а) процентов на семьдесят.';
+    } else {
+      phrase = 'Ох, сложно… Наверное, <b>' + L + '</b> — «' + esc(T) + '». Но я могу ошибаться.';
+    }
+    var box = MSX.el('div', 'phone');
+    box.innerHTML = 'Звонок другу · ' + esc(who.charAt(0).toUpperCase() + who.slice(1)) + ': ' + phrase;
+    dom.info.innerHTML = '';
+    dom.info.appendChild(box);
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function askTake() {
+    var sum = level > 0 ? PRIZES[level - 1] : 0;
+    G.overlay({
+      title: 'Забрать деньги?',
+      text: 'Вы уйдёте с суммой ' + MSX.fmtNum(sum) + ' ₽.',
+      items: [
+        { label: 'Продолжить игру', run: function () { G.closeOverlay(); } },
+        { label: 'Забрать ' + MSX.fmtNum(sum) + ' ₽', run: function () { used.take = true; end('take'); } }
+      ],
+      back: function () { G.closeOverlay(); }
+    });
+  }
+
+  /* ---------------- движок ---------------- */
+
+  G = MSX.game({
+    id: 'millionaire',
+    title: 'Кто хочет стать миллионером?',
+    hud: [
+      { key: 'q', label: 'Вопрос', value: '1 / 15' },
+      { key: 'prize', label: 'На кону', value: '500 ₽' },
+      { key: 'safe', label: 'Несгораемая', value: '0 ₽' }
+    ],
+    hints: [['◀ ▲ ▼ ▶', 'выбор'], ['1–4', 'ответ A–D'], ['OK', 'ответить'], ['▲', 'подсказки'], ['BACK', 'пауза']],
+    info: function () {
+      var b = MSX.store.get('mil.best', 0);
+      return b ? 'Рекорд: ' + MSX.fmtNum(b) + ' ₽' : '15 вопросов до 3 000 000 ₽';
+    },
+    start: function () {
+      build();
+      best = MSX.store.get('mil.best', 0);
+      questions = takeQuestions('easy', 5).concat(takeQuestions('medium', 5), takeQuestions('hard', 5));
+      level = 0;
+      used = {};
+      lifeSel = 0;
+      correctCount = 0;
+      timer = null;
+      nextQuestion();
+    },
+    update: function (dt) {
+      if (!timer) { return; }
+      timer.t -= dt;
+      if (timer.t <= 0) {
+        var fn = timer.fn;
+        timer = null;
+        fn();
+      }
+    },
+    key: function (k, rep) {
+      if (rep && k !== 'left' && k !== 'right' && k !== 'up' && k !== 'down') { return k !== 'back'; }
+      if (phase === 'locked' || phase === 'reveal') { return k !== 'back'; }
+
+      if (phase === 'confirm') {
+        if (k === 'ok') { lockAnswer(); return true; }
+        if (k === 'back') { phase = 'answer'; render(); return true; }
+        if (k >= '1' && k <= '4') {
+          var d = +k - 1;
+          if (!removed[d]) { sel = d; }
+          phase = 'answer';
+          render();
+          return true;
+        }
+        phase = 'answer';
+      }
+
+      if (k >= '1' && k <= '4') {
+        var idx = +k - 1;
+        if (!removed[idx]) { focus = 'answers'; sel = idx; }
+        render();
+        return true;
+      }
+
+      if (focus === 'life') {
+        if (k === 'left') { lifeSel = Math.max(0, lifeSel - 1); }
+        else if (k === 'right') { lifeSel = Math.min(LIFE.length - 1, lifeSel + 1); }
+        else if (k === 'down') { focus = 'answers'; if (removed[sel]) { sel = firstAvailable(); } }
+        else if (k === 'ok') { useLife(lifeSel); return true; }
+        else if (k === 'back') { return false; }
+        render();
+        return true;
+      }
+
+      if (k === 'left') { moveSel(-1, 0); }
+      else if (k === 'right') { moveSel(1, 0); }
+      else if (k === 'up') { moveSel(0, -1); }
+      else if (k === 'down') { moveSel(0, 1); }
+      else if (k === 'ok') {
+        if (!removed[sel]) { phase = 'confirm'; }
+      }
+      else if (k === 'back') { return false; }
+      render();
+      return true;
+    }
+  });
+})();
+</script>
+</body>
+</html>
