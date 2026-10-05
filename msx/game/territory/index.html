@@ -32,6 +32,17 @@
   var VIEW_UNITS = 40;           // сколько радиусов гекса по высоте экрана
   var WIN_SHARE = 0.5;
   var GRACE = 3;                 // последние клетки следа, повторный заход в которые не смертелен
+  var PU_TYPES = ['speed', 'storm', 'shield', 'paint'];
+  var PU_INFO = {
+    speed:  { color: '#fbbf24', dur: 5, name: 'Ускорение!' },
+    storm:  { color: '#60a5fa', dur: 7, name: 'Непогода: соперники рядом замедлены' },
+    shield: { color: '#34d399', dur: 6, name: 'Щит: ваш след не срезать' },
+    paint:  { color: '#f472b6', dur: 0, name: 'Захват области' }
+  };
+  var STORM_R = 9;               // радиус грозовой зоны (мировые единицы ≈ 5 гексов)
+  var SPEED_BOOST = 1.6;
+  var STORM_SLOW = 0.5;
+  var PAINT_R = 5.3;
   var PALETTE = ['#4c8dff', '#ff5d73', '#ffc233', '#2fd38a', '#a78bfa', '#ff7ad9', '#22d3ee', '#ff9640',
     '#a3e635', '#e879f9', '#2dd4bf', '#f43f5e', '#facc15', '#93c5fd', '#c4b5fd'];
   var NAMES = ['Кот', 'Бублик', 'Пельмень', 'Ёжик', 'Зефир', 'Шаурма', 'Лёха', 'Тигр', 'Пиксель', 'Капитан',
@@ -55,6 +66,7 @@
   var time, kills, maxShare, best, newBest, cfgD, playerHomeT;
   var cam = { x: 0, y: 0, S: 20 };
   var feed, mini, miniCtx, miniData, miniTimer, hudTimer;
+  var powerups, puTimer, bonusesOn;
 
   /* ---------------- геометрия ---------------- */
 
@@ -163,8 +175,13 @@
     return {
       id: id, isPlayer: isPlayer, alive: false, name: isPlayer ? 'Вы' : '', col: colorsFor(id),
       x: 0, y: 0, a: 0, ta: 0, cell: -1, speed: isPlayer ? PLAYER_SPEED : cfgD.speed,
-      path: [], pts: [], kills: 0, respawn: 0, homeDist: 0, ai: null
+      path: [], pts: [], kills: 0, respawn: 0, homeDist: 0, ai: null,
+      fx: { speed: 0, storm: 0, shield: 0 }, slow: false
     };
+  }
+
+  function curSpeed(e) {
+    return e.speed * (e.fx.speed > 0 ? SPEED_BOOST : 1) * (e.slow ? STORM_SLOW : 1);
   }
 
   function newAI() {
@@ -192,6 +209,8 @@
     e.path = [];
     e.pts = [];
     e.homeDist = 0;
+    e.fx = { speed: 0, storm: 0, shield: 0 };
+    e.slow = false;
     e.a = Math.atan2(CY - y, CX - x) + MSX.rand(-1, 1);
     e.ta = e.a;
     if (!e.isPlayer) {
@@ -226,8 +245,9 @@
     return -1;
   }
 
-  function killEntity(v, killer, reason) {
+  function killEntity(v, killer, reason, force) {
     if (!v.alive) { return; }
+    if (!force && v.fx.shield > 0) { return; }     // щит спасает от среза
     v.alive = false;
     for (var p = 0; p < v.path.length; p++) { if (trail[v.path[p]] === v.id) { trail[v.path[p]] = 0; } }
     v.path = [];
@@ -315,11 +335,112 @@
     e.path = [];
     e.pts = [];
     var gained = counts[id] - before;
-    for (k = 1; k < ents.length; k++) {
-      var o = ents[k];
-      if (o !== e && o.alive && counts[o.id] === 0) { killEntity(o, e, 'Вашу территорию полностью захватили.'); }
-    }
+    checkWiped(e);
     return gained;
+  }
+
+  // соперники, у которых не осталось земли, выбывают (щит не спасает)
+  function checkWiped(e) {
+    for (var k = 1; k < ents.length; k++) {
+      var o = ents[k];
+      if (o !== e && o.alive && counts[o.id] === 0) { killEntity(o, e, 'Вашу территорию полностью захватили.', true); }
+    }
+  }
+
+  /* ---------------- бонусы ---------------- */
+
+  function spawnPU() {
+    for (var t = 0; t < 50; t++) {
+      var i = MSX.randInt(0, N - 1);
+      if (!valid[i] || trail[i] || edgeDist(CXS[i], CYS[i]) < 3) { continue; }
+      if (owner[i] && Math.random() < 0.7) { continue; }
+      var ok = true;
+      for (var p = 0; p < powerups.length; p++) {
+        var dx = powerups[p].x - CXS[i], dy = powerups[p].y - CYS[i];
+        if (dx * dx + dy * dy < 64) { ok = false; break; }
+      }
+      if (!ok) { continue; }
+      powerups.push({ type: MSX.pick(PU_TYPES), x: CXS[i], y: CYS[i], phase: MSX.rand(0, TAU), age: 0 });
+      return;
+    }
+  }
+
+  function paintArea(e) {
+    var rc = Math.floor(e.cell / W), cc = e.cell % W;
+    var span = Math.ceil(PAINT_R) + 1;
+    for (var r = Math.max(0, rc - span); r <= Math.min(H - 1, rc + span); r++) {
+      for (var c = Math.max(0, cc - span); c <= Math.min(W - 1, cc + span); c++) {
+        var i = r * W + c;
+        if (!valid[i]) { continue; }
+        var dx = CXS[i] - e.x, dy = CYS[i] - e.y;
+        if (dx * dx + dy * dy <= PAINT_R * PAINT_R) { setOwner(i, e.id); }
+      }
+    }
+    // открытый след замыкается сразу: голова теперь на своей земле
+    if (e.path.length) { claim(e); } else { checkWiped(e); }
+  }
+
+  function applyPU(e, pu) {
+    if (pu.type === 'paint') {
+      var before = counts[e.id];
+      paintArea(e);
+      if (e.isPlayer) { G.toast('Захват области  +' + (counts[e.id] - before), 1200); }
+      return;
+    }
+    e.fx[pu.type] = PU_INFO[pu.type].dur;
+    if (e.isPlayer) { G.toast(PU_INFO[pu.type].name, 1400); }
+  }
+
+  function checkPickup(e) {
+    for (var p = powerups.length - 1; p >= 0; p--) {
+      var pu = powerups[p];
+      var dx = pu.x - e.x, dy = pu.y - e.y;
+      if (dx * dx + dy * dy < 1.6 * 1.6) {
+        powerups.splice(p, 1);
+        applyPU(e, pu);
+        if (!e.alive || state !== 'play') { return; }
+      }
+    }
+  }
+
+  function nearestPU(e, maxD) {
+    var best = null, bd = maxD * maxD;
+    for (var p = 0; p < powerups.length; p++) {
+      var dx = powerups[p].x - e.x, dy = powerups[p].y - e.y;
+      var d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = powerups[p]; }
+    }
+    return best;
+  }
+
+  function updateEffects(dt) {
+    var k, e, o;
+    for (k = 1; k < ents.length; k++) {
+      e = ents[k];
+      if (!e.alive) { continue; }
+      if (e.fx.speed > 0) { e.fx.speed = Math.max(0, e.fx.speed - dt); }
+      if (e.fx.storm > 0) { e.fx.storm = Math.max(0, e.fx.storm - dt); }
+      if (e.fx.shield > 0) { e.fx.shield = Math.max(0, e.fx.shield - dt); }
+    }
+    for (k = 1; k < ents.length; k++) {
+      e = ents[k];
+      e.slow = false;
+      if (!e.alive) { continue; }
+      for (var j = 1; j < ents.length; j++) {
+        o = ents[j];
+        if (o === e || !o.alive || o.fx.storm <= 0) { continue; }
+        var dx = o.x - e.x, dy = o.y - e.y;
+        if (dx * dx + dy * dy < STORM_R * STORM_R) { e.slow = true; break; }
+      }
+    }
+    if (!bonusesOn) { return; }
+    var target = Math.max(6, Math.round(validCount / 650));
+    puTimer -= dt;
+    if (puTimer <= 0 && powerups.length < target) {
+      spawnPU();
+      puTimer = MSX.rand(1.2, 2.6);
+    }
+    for (var p = 0; p < powerups.length; p++) { powerups[p].age += dt; }
   }
 
   function enterCell(e, c) {
@@ -352,7 +473,7 @@
     var diff = angDiff(e.a, e.ta);
     var maxT = TURN * dt;
     e.a += diff > maxT ? maxT : (diff < -maxT ? -maxT : diff);
-    var dist = e.speed * dt;
+    var dist = curSpeed(e) * dt;
     var steps = Math.max(1, Math.ceil(dist / 0.4));
     var d = dist / steps;
     for (var s = 0; s < steps; s++) {
@@ -492,7 +613,8 @@
   }
 
   function inDanger(e) {
-    var limit = e.homeDist + e.ai.caution + 1.5;
+    // в чужой непогоде путь домой «длиннее», с ускорением — короче
+    var limit = e.homeDist * (e.speed / curSpeed(e)) + e.ai.caution + 1.5;
     for (var k = 1; k < ents.length; k++) {
       var o = ents[k];
       if (o === e || !o.alive) { continue; }
@@ -503,9 +625,10 @@
 
   function findPrey(e) {
     var ai = e.ai;
-    if (Math.random() > ai.aggr) { return null; }
-    if (e.path.length > ai.maxTrail * 0.5) { return null; }
-    var range = 7 + ai.aggr * 15;
+    var boosted = e.fx.speed > 0 || e.fx.storm > 0;   // с бонусом бот смелее охотится
+    if (!boosted && Math.random() > ai.aggr) { return null; }
+    if (e.path.length > ai.maxTrail * 0.5 || e.slow) { return null; }
+    var range = 7 + ai.aggr * 15 + (boosted ? 6 : 0);
     var best = null, bestD = 1e9;
     for (var k = 1; k < ents.length; k++) {
       var o = ents[k];
@@ -584,6 +707,14 @@
       if (!headingSafe(e, ta)) {
         if (ai.mode === 'home') { planLoop(e); ta = ai.outAngle; }
         else if (homePath && homePath.length) { ai.mode = 'return'; ta = aimAlong(e, homePath); }
+      }
+    }
+    // бонус рядом — заворачиваем за ним, если это безопасно
+    if (bonusesOn && (ai.mode === 'home' || ai.mode === 'out' || ai.mode === 'side') && e.path.length < ai.maxTrail * 0.6) {
+      var pu = nearestPU(e, 9);
+      if (pu) {
+        var pa = Math.atan2(pu.y - e.y, pu.x - e.x);
+        if (headingSafe(e, pa)) { ta = pa; }
       }
     }
     if (!headingSafe(e, ta) && homePath && homePath.length && ai.mode !== 'return') {
@@ -676,9 +807,12 @@
     }
     if (state !== 'play') { return; }
     if (started) { time += dt; }
+    updateEffects(dt);
 
     if (started) {
       moveEntity(player, dt);
+      if (state !== 'play') { return; }
+      checkPickup(player);
       if (state !== 'play') { return; }
       if (player.path.length) {
         playerHomeT -= dt;
@@ -704,6 +838,8 @@
       }
       botThink(b, dt);
       moveEntity(b, dt);
+      if (state !== 'play') { return; }
+      if (b.alive) { checkPickup(b); }
       if (state !== 'play') { return; }
     }
 
@@ -857,6 +993,9 @@
     ctx.arc((CX - cam.x) * S, (CY - cam.y) * S, (RW + 0.9) * S, 0, TAU);
     ctx.stroke();
 
+    drawStorms(ctx);
+    drawPowerups(ctx);
+
     // игроки
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
@@ -867,6 +1006,21 @@
       var px = (e.x - cam.x) * S, py = (e.y - cam.y) * S;
       if (px < -S * 4 || py < -S * 4 || px > vw + S * 4 || py > vh + S * 4) { continue; }
       var rad = S * 0.95;
+      var fxa = Math.cos(e.a), fya = Math.sin(e.a);
+      if (e.fx.speed > 0) {
+        // полосы скорости позади
+        ctx.strokeStyle = 'rgba(251,191,36,.55)';
+        ctx.lineWidth = Math.max(2, S * 0.16);
+        for (var sl = -1; sl <= 1; sl++) {
+          var bx0 = px - fxa * rad * 1.1 - fya * sl * rad * 0.5;
+          var by0 = py - fya * rad * 1.1 + fxa * sl * rad * 0.5;
+          var len = rad * (sl === 0 ? 2.2 : 1.5);
+          ctx.beginPath();
+          ctx.moveTo(bx0, by0);
+          ctx.lineTo(bx0 - fxa * len, by0 - fya * len);
+          ctx.stroke();
+        }
+      }
       ctx.save();
       ctx.shadowColor = e.col.base;
       ctx.shadowBlur = e.isPlayer ? S * 1.2 : S * 0.6;
@@ -878,6 +1032,27 @@
       ctx.lineWidth = Math.max(2, S * 0.14);
       ctx.strokeStyle = e.isPlayer ? '#fff' : 'rgba(255,255,255,.55)';
       ctx.stroke();
+      if (e.fx.shield > 0) {
+        var blink = e.fx.shield < 1.5 && Math.floor(e.fx.shield * 6) % 2 === 0;
+        if (!blink) {
+          ctx.strokeStyle = 'rgba(52,211,153,.85)';
+          ctx.fillStyle = 'rgba(52,211,153,.14)';
+          ctx.lineWidth = Math.max(2, S * 0.12);
+          ctx.beginPath();
+          ctx.arc(px, py, rad * (1.55 + Math.sin(MSX.now() / 160) * 0.06), 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+      if (e.slow) {
+        ctx.strokeStyle = 'rgba(96,165,250,.9)';
+        ctx.lineWidth = Math.max(2, S * 0.1);
+        if (ctx.setLineDash) { ctx.setLineDash([S * 0.25, S * 0.2]); }
+        ctx.beginPath();
+        ctx.arc(px, py, rad * 1.3, 0, TAU);
+        ctx.stroke();
+        if (ctx.setLineDash) { ctx.setLineDash([]); }
+      }
       var fx = Math.cos(e.a), fy = Math.sin(e.a);
       for (var side = -1; side <= 1; side += 2) {
         var ex = px + fx * rad * 0.3 - fy * side * rad * 0.36;
@@ -900,6 +1075,120 @@
     if (state === 'dying') {
       ctx.fillStyle = 'rgba(220,38,38,' + (0.35 * deathT / 1.3) + ')';
       ctx.fillRect(0, 0, vw, vh);
+    }
+  }
+
+  // иконка бонуса, нарисованная фигурами (эмодзи на ТВ могут не отображаться)
+  function drawIcon(ctx, type, x, y, r, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = color || '#fff';
+    ctx.strokeStyle = color || '#fff';
+    ctx.beginPath();
+    if (type === 'speed') {
+      var bolt = [[0.2, -1], [-0.5, 0.12], [-0.05, 0.12], [-0.25, 1], [0.5, -0.2], [0.05, -0.2]];
+      ctx.moveTo(bolt[0][0] * r, bolt[0][1] * r);
+      for (var i = 1; i < bolt.length; i++) { ctx.lineTo(bolt[i][0] * r, bolt[i][1] * r); }
+      ctx.closePath();
+      ctx.fill();
+    } else if (type === 'storm') {
+      ctx.arc(-0.38 * r, -0.1 * r, 0.36 * r, 0, TAU);
+      ctx.arc(0.05 * r, -0.32 * r, 0.46 * r, 0, TAU);
+      ctx.arc(0.45 * r, -0.08 * r, 0.34 * r, 0, TAU);
+      ctx.rect(-0.38 * r, -0.1 * r, 0.83 * r, 0.34 * r);
+      ctx.fill();
+      ctx.lineWidth = Math.max(1.5, r * 0.14);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (var d = -1; d <= 1; d++) {
+        ctx.moveTo(d * 0.35 * r, 0.42 * r);
+        ctx.lineTo(d * 0.35 * r - 0.12 * r, 0.85 * r);
+      }
+      ctx.stroke();
+    } else if (type === 'shield') {
+      ctx.moveTo(0, -0.9 * r);
+      ctx.lineTo(0.72 * r, -0.58 * r);
+      ctx.quadraticCurveTo(0.72 * r, 0.45 * r, 0, 0.95 * r);
+      ctx.quadraticCurveTo(-0.72 * r, 0.45 * r, -0.72 * r, -0.58 * r);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      for (var k = 0; k < 6; k++) {
+        var hx = HX[k] * r * 0.9, hy = HY[k] * r * 0.9;
+        if (k === 0) { ctx.moveTo(hx, hy); } else { ctx.lineTo(hx, hy); }
+      }
+      ctx.closePath();
+      ctx.lineWidth = Math.max(1.5, r * 0.18);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.32, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPowerups(ctx) {
+    var S = cam.S;
+    var t = MSX.now() / 1000;
+    for (var p = 0; p < powerups.length; p++) {
+      var pu = powerups[p];
+      var px = (pu.x - cam.x) * S, py = (pu.y - cam.y) * S;
+      if (px < -S * 3 || py < -S * 3 || px > view.w + S * 3 || py > view.h + S * 3) { continue; }
+      var grow = Math.min(1, pu.age * 3);
+      var r = S * 0.95 * grow * (1 + Math.sin(t * 4 + pu.phase) * 0.07);
+      var col = PU_INFO[pu.type].color;
+      ctx.save();
+      ctx.shadowColor = col;
+      ctx.shadowBlur = S * 1.2;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,255,255,.9)';
+      ctx.lineWidth = Math.max(2, S * 0.1);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+      drawIcon(ctx, pu.type, px, py, r * 0.58, '#ffffff');
+    }
+  }
+
+  function drawStorms(ctx) {
+    var S = cam.S;
+    var t = MSX.now() / 1000;
+    for (var k = 1; k < ents.length; k++) {
+      var e = ents[k];
+      if (!e.alive || e.fx.storm <= 0) { continue; }
+      var cx = (e.x - cam.x) * S, cy = (e.y - cam.y) * S;
+      var R2 = STORM_R * S;
+      if (cx < -R2 || cy < -R2 || cx > view.w + R2 || cy > view.h + R2) { continue; }
+      var fade = Math.min(1, e.fx.storm);
+      var grad = ctx.createRadialGradient(cx, cy, R2 * 0.2, cx, cy, R2);
+      grad.addColorStop(0, 'rgba(30,58,138,' + (0.32 * fade) + ')');
+      grad.addColorStop(1, 'rgba(30,58,138,' + (0.12 * fade) + ')');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, R2, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(147,197,253,' + (0.6 * fade) + ')';
+      ctx.lineWidth = Math.max(2, S * 0.1);
+      if (ctx.setLineDash) { ctx.setLineDash([S * 0.6, S * 0.4]); ctx.lineDashOffset = -t * S * 2; }
+      ctx.beginPath(); ctx.arc(cx, cy, R2, 0, TAU); ctx.stroke();
+      if (ctx.setLineDash) { ctx.setLineDash([]); ctx.lineDashOffset = 0; }
+      // дождь
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, R2, 0, TAU); ctx.clip();
+      ctx.strokeStyle = 'rgba(191,219,254,' + (0.45 * fade) + ')';
+      ctx.lineWidth = Math.max(1, S * 0.07);
+      ctx.beginPath();
+      for (var d = 0; d < 26; d++) {
+        var hx = Math.sin(d * 12.9898) * 43758.5453;
+        var hy = Math.sin(d * 78.233) * 12345.678;
+        hx -= Math.floor(hx);
+        hy -= Math.floor(hy);
+        var rx = cx + (hx * 2 - 1) * R2;
+        var ry = cy - R2 + ((hy + t * 1.4) % 1) * 2 * R2;
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - S * 0.25, ry + S * 0.8);
+      }
+      ctx.stroke();
+      ctx.restore();
+      drawIcon(ctx, 'storm', cx, cy - S * 2.4, S * 0.9, 'rgba(191,219,254,' + (0.9 * fade) + ')');
     }
   }
 
@@ -966,6 +1255,32 @@
     ctx.beginPath();
     ctx.arc(ox + player.x * scale, oy + player.y * scale, Math.max(2.5, fs * 0.24), 0, TAU);
     ctx.fill();
+    for (var pm = 0; pm < powerups.length; pm++) {
+      ctx.fillStyle = PU_INFO[powerups[pm].type].color;
+      ctx.fillRect(ox + powerups[pm].x * scale - 1.5, oy + powerups[pm].y * scale - 1.5, 3, 3);
+    }
+
+    // активные бонусы игрока
+    var fxList = [];
+    if (player.alive) {
+      if (player.fx.speed > 0) { fxList.push(['speed', player.fx.speed]); }
+      if (player.fx.storm > 0) { fxList.push(['storm', player.fx.storm]); }
+      if (player.fx.shield > 0) { fxList.push(['shield', player.fx.shield]); }
+    }
+    for (var fi = 0; fi < fxList.length; fi++) {
+      var type = fxList[fi][0];
+      var icx = pad + fs * 1.3 + fi * fs * 3;
+      var icy = vh - pad - fs * 1.3;
+      var ir = fs * 1.1;
+      ctx.fillStyle = 'rgba(4,7,11,.65)';
+      ctx.beginPath(); ctx.arc(icx, icy, ir + 4, 0, TAU); ctx.fill();
+      ctx.strokeStyle = PU_INFO[type].color;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(icx, icy, ir, -PI / 2, -PI / 2 + TAU * fxList[fi][1] / PU_INFO[type].dur);
+      ctx.stroke();
+      drawIcon(ctx, type, icx, icy, ir * 0.62, PU_INFO[type].color);
+    }
 
     // прогресс к победе
     var bw = Math.min(vw * 0.36, fs * 22), bh = fs * 0.55;
@@ -1006,7 +1321,8 @@
       { key: 'map', label: 'Арена', values: [{ value: 'm', label: 'Средняя' }, { value: 'l', label: 'Большая' }, { value: 'xl', label: 'Огромная' }], def: 'l' },
       { key: 'bots', label: 'Соперники', values: [{ value: 5, label: '5' }, { value: 8, label: '8' }, { value: 12, label: '12' }], def: 8 },
       { key: 'diff', label: 'Боты', values: [{ value: 'easy', label: 'Новички' }, { value: 'normal', label: 'Опытные' }, { value: 'smart', label: 'Умные' }], def: 'normal' },
-      { key: 'steer', label: 'Управление', values: [{ value: 'abs', label: 'Стрелки — направление' }, { value: 'turn', label: '◀ ▶ — поворот' }], def: 'abs' }
+      { key: 'steer', label: 'Управление', values: [{ value: 'abs', label: 'Стрелки — направление' }, { value: 'turn', label: '◀ ▶ — поворот' }], def: 'abs' },
+      { key: 'bonus', label: 'Бонусы', values: [{ value: true, label: 'Вкл' }, { value: false, label: 'Выкл' }], def: true }
     ],
     hud: [
       { key: 'land', label: 'Земля', value: '0%' },
@@ -1022,6 +1338,9 @@
       view = G.canvas();
       cfgD = DIFF[s.diff];
       steer = s.steer;
+      bonusesOn = s.bonus;
+      powerups = [];
+      puTimer = 0;
       G.hints(steer === 'turn'
         ? [['◀ ▶', 'поворот на 45°'], ['1–9', 'направление по компасу'], ['OK / BACK', 'пауза']]
         : [['◀ ▲ ▼ ▶', 'направление'], ['две стрелки быстро', 'диагональ'], ['1–9', 'компас'], ['OK / BACK', 'пауза']]);
