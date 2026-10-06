@@ -3,7 +3,7 @@
   "version": "1.2.6",
   "type": "pages",
   "headline": "Моя Медиатека",
-  "background": "https://ofmjo.github.io/img/bg.jpg",
+  "background": "https://ofmjo.github.io/img/bg-dark.jpg",
   "restore": true,
   "cache": true,
   "pages": [
@@ -11,61 +11,61 @@
       "items": [
         {
           "id": "app_zona",
-          "type": "default",
-          "layout": "1,2,2,2",
+          "type": "separate",
+          "layout": "1,2,2,3",
           "color": "#1F262D",
           "image": "https://ofmjo.github.io/img/zona.png",
           "imageFiller": "cover",
           "title": "Zona",
-          "titleFooter": "Фильмы и сериалы",
+          "titleFooter": "Фильмы, сериалы",
           "_badge": "TOP",
           "action": "[settings:validate_links:0|link:https://msx.zona.ms]"
         },
         {
           "id": "app_hdrezka",
-          "type": "default",
-          "layout": "3,2,2,2",
+          "type": "separate",
+          "layout": "3,2,2,3",
           "color": "#1F262D",
-          "image": "https://ofmjo.github.io/img/hdrezka.jpg",
+          "image": "https://ofmjo.github.io/img/hdrezka-logo.png",
           "imageFiller": "cover",
           "title": "HDRezka",
-          "titleFooter": "Фильмы и сериалы",
+          "titleFooter": "Фильмы, сериалы",
           "_badge": "HD",
           "action": "menu:http://89.124.94.44:8080/msx/menu.json"
         },
         {
           "id": "app_games",
-          "type": "default",
-          "layout": "5,2,2,2",
+          "type": "separate",
+          "layout": "5,2,2,3",
           "color": "#1F262D",
           "title": "Игры",
-          "titleFooter": "Хаб с играми",
+          "titleFooter": "Мини-игры",
           "action": "link:https://ofmjo.github.io/msx/game/index.html",
           "icon": "msx-white-soft:videogame-asset",
-          "iconSize": "extra-large"
+          "iconSize": "large"
         },
         {
           "id": "app_radio",
-          "type": "default",
-          "layout": "7,2,2,2",
+          "type": "separate",
+          "layout": "7,2,2,3",
           "color": "#1F262D",
           "title": "Радио",
-          "titleFooter": "Русские и мировые станции",
+          "titleFooter": "Онлайн-станции",
           "action": "link:https://ofmjo.github.io/msx/apps/radio/index.html",
           "icon": "msx-white-soft:radio",
-          "iconSize": "extra-large"
+          "iconSize": "large"
         },
         {
           "id": "app_update",
-          "type": "default",
-          "layout": "9,2,2,2",
+          "type": "separate",
+          "layout": "9,2,2,3",
           "color": "#1F262D",
           "title": "Перезагрузка",
-          "titleFooter": "Перезагрузить лаунчер",
+          "titleFooter": "Обновить лаунчер",
           "_badge": "NEW",
           "action": "reload",
           "icon": "msx-white-soft:autorenew",
-          "iconSize": "extra-large"
+          "iconSize": "large"
         }
       ]
     }
