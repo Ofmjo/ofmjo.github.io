@@ -65,7 +65,7 @@
           "title": "Перезагрузка",
           "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
-          "action": "cleaning"
+          "action": "reload"
         }
       ]
     }

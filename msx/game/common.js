@@ -127,7 +127,10 @@
     ctx.closePath();
   }
 
-  function exitToHub() { window.location.href = HUB_URL; }
+  function exitToHub() {
+    if (window.history.length > 1) { window.history.back(); return; }
+    window.location.href = HUB_URL;
+  }
 
   /* ---------------- иконки ----------------
    * В шрифтах многих ТВ нет символов ◀ ▲ ▼ ▶, ₽ и т.п. Стрелки рисуем встроенным SVG.

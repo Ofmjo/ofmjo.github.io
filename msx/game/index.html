@@ -282,6 +282,8 @@
   }
 
   function exit() {
+    // Страница открыта действием link внутри MSX: history.back() возвращает в приложение (лаунчер восстанавливается).
+    if (history.length > 1) { history.back(); return; }
     var currentUrl = location.href.split(/[?#]/)[0];
     var launcherUrl = currentUrl.replace(/msx\/game\/index\.html$/, 'msx/launcher.json');
     location.href = 'https://msx.benzac.de/?start=content:' + encodeURI(launcherUrl);
