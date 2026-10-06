@@ -12,7 +12,7 @@
         {
           "id": "app_zona",
           "type": "default",
-          "layout": "0,0,4,3",
+          "layout": "1,2,2,2",
           "color": "#1F262D",
           "image": "https://ofmjo.github.io/img/zona.png",
           "imageFiller": "cover",
@@ -24,7 +24,7 @@
         {
           "id": "app_hdrezka",
           "type": "default",
-          "layout": "4,0,4,3",
+          "layout": "3,2,2,2",
           "color": "#1F262D",
           "image": "https://ofmjo.github.io/img/hdrezka.jpg",
           "imageFiller": "cover",
@@ -36,36 +36,36 @@
         {
           "id": "app_games",
           "type": "default",
-          "layout": "8,0,4,3",
+          "layout": "5,2,2,2",
           "color": "#1F262D",
-          "image": "https://ofmjo.github.io/img/games.png?v=3",
-          "imageFiller": "cover",
           "title": "Игры",
           "titleFooter": "Хаб с играми",
-          "action": "link:https://ofmjo.github.io/msx/game/index.html"
+          "action": "link:https://ofmjo.github.io/msx/game/index.html",
+          "icon": "msx-white-soft:videogame-asset",
+          "iconSize": "extra-large"
         },
         {
           "id": "app_radio",
           "type": "default",
-          "layout": "0,3,4,3",
+          "layout": "7,2,2,2",
           "color": "#1F262D",
-          "image": "https://ofmjo.github.io/img/radio.png?v=3",
-          "imageFiller": "cover",
           "title": "Радио",
           "titleFooter": "Русские и мировые станции",
-          "action": "link:https://ofmjo.github.io/msx/apps/radio/index.html"
+          "action": "link:https://ofmjo.github.io/msx/apps/radio/index.html",
+          "icon": "msx-white-soft:radio",
+          "iconSize": "extra-large"
         },
         {
           "id": "app_update",
           "type": "default",
-          "layout": "4,3,4,3",
+          "layout": "9,2,2,2",
           "color": "#1F262D",
-          "image": "https://ofmjo.github.io/img/update.png?v=3",
-          "imageFiller": "cover",
           "title": "Перезагрузка",
           "titleFooter": "Перезагрузить лаунчер",
           "_badge": "NEW",
-          "action": "reload"
+          "action": "reload",
+          "icon": "msx-white-soft:autorenew",
+          "iconSize": "extra-large"
         }
       ]
     }
